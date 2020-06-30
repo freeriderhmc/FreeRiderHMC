@@ -24,7 +24,7 @@
 > * 나의 local repository status 확인 - $ git status
 
 ## git rebase
-> 내가 A버전의 snuzero repo master에서 branch를 생성해 A+B를 짜고 있는데, 누군가가 A+C를 push하면 내가 push할 수 없다. 이를 위해 master를 A+C로 업데이트하고 내 코드를 A+B+C로 만들어야 한다.
+> 내가 A버전의 freeriderhmc repo master에서 branch를 생성해 A+B를 짜고 있는데, 누군가가 A+C를 push하면 내가 push할 수 없다. 이를 위해 master를 A+C로 업데이트하고 내 코드를 A+B+C로 만들어야 한다.
 
 > $ git checkout master
 
