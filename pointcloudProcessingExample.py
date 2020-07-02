@@ -1,8 +1,9 @@
 # FreeRiderHMC Team
-# Ver.2    0701
+# Ver.3    0702
 # Segment the road just by cutting the z values below threshold instead of RANSAC segmentation
 # Visualize Each Clusters
 # load binary data
+# Add sequent visualization
 
 import sys
 import os
@@ -14,6 +15,11 @@ from sklearn.neighbors import KDTree
 import clusteringModule as clu
 import planeSegmentation as seg
 import loadData
+
+
+
+vis = o3d.visualization.Visualizer()
+vis.create_window()
 
 
 # Load binary data
@@ -40,8 +46,8 @@ for files in file_list:
     # Crop Pointcloud -20m < x < 20m && -20m < y < 20m && z > -1.80m
     cloud_downsample = cloud_downsample[((cloud_downsample[:, 0] <= 20))]
     cloud_downsample = cloud_downsample[((cloud_downsample[:, 0] >= -20))]
-    cloud_downsample = cloud_downsample[((cloud_downsample[:, 1] <= 20))]
-    cloud_downsample = cloud_downsample[((cloud_downsample[:, 1] >= -20))]
+    cloud_downsample = cloud_downsample[((cloud_downsample[:, 1] <= 10))]
+    cloud_downsample = cloud_downsample[((cloud_downsample[:, 1] >= -10))]
 
     # threshold z value cut the road
     cloudoutliers = cloud_downsample[((cloud_downsample[:, 2] >= -1.4))] # -1.56
@@ -53,31 +59,53 @@ for files in file_list:
     start = time.time()
 
     tree = KDTree(cloudoutliers)
-    clusters = clu.euclideanCluster(cloudoutliers, tree, 0.15)
+    clusters = clu.euclideanCluster(cloudoutliers, tree, 0.35)
     print("number of estimated clusters : ", len(clusters))
+    
     print("How much time for Clustering")
     print(time.time() - start)
 
-    '''
+    
+
+    clustersCloud_pcd = o3d.geometry.PointCloud()
     # Visualize Clusters
     for i in range(len(clusters)):
-        clusterCloud = np.empty(shape=[0, 3])
-        for j in range(len(clusters[i])):
-            clusterCloud = np.append(clusterCloud, np.array([cloudoutliers[clusters[i][j]]]), axis = 0)
-            # numpy -> pcd
-            # using o3d.utility.color~
-            # update geometry 
-    '''
+        #print(len(clusters[i]))
+        clusterCloud = cloudoutliers[clusters[i][:],:]
+        clusterCloud_pcd = o3d.geometry.PointCloud()
+        clusterCloud_pcd.points = o3d.utility.Vector3dVector(clusterCloud)
+        if i%3 == 0:
+            clusterCloud_pcd.paint_uniform_color([1,0,0])
+        elif i%3 == 1:
+            clusterCloud_pcd.paint_uniform_color([0,1,0])
+        else:
+            clusterCloud_pcd.paint_uniform_color([0,0,1])
+
+        #clustersCloud_pcd.points = np.append(clustersCloud_pcd.points,clusterCloud_pcd.points)
         
+        vis.add_geometry(clusterCloud_pcd)
+        vis.run()
+        
+        #o3d.visualization.draw_geometries([clusterCloud_pcd])
+        time.sleep(0.5)
+
+    # enter key -> next frame
+    input("Press Enter to continue...")
+    vis.clear_geometries()
+    
+        
+        
+        
+    
+    #clusterCloud.paint_uniform_color([0.1, 0.9, 0.1])
 
 
 
     # Visualization
-    pcd_processed = o3d.geometry.PointCloud()
-    pcd_processed.points = o3d.utility.Vector3dVector(cloudoutliers)
+    #pcd_processed = o3d.geometry.PointCloud()
+    #pcd_processed.points = o3d.utility.Vector3dVector(cloudoutliers)
 
-    o3d.visualization.draw_geometries([pcd_processed])
-    time.sleep(5)
+    
 
 
 
