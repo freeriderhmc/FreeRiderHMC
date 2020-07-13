@@ -1,5 +1,4 @@
 
-
 # FreeRiderHMC Team
 # main_Ver.3    0708
 # Segment the road just by cutting the z values below threshold instead of RANSAC segmentation
@@ -83,7 +82,7 @@ num = 0
 #for files in file_list:
     
 
-files = file_list[2]
+files = file_list[18]
 data = np.fromfile(path+files, dtype = np.float32)
 data = data.reshape(-1,4)
 data = data[:,0:3]
@@ -232,14 +231,14 @@ for i in range(len(clusters)):
             dist1 = get_distance(convexhull_sorted_numpy[j][:],convexhull_sorted_numpy[j+1][:])
             dist2 = get_distance(convexhull_sorted_numpy[j+1][:],convexhull_sorted_numpy[j+2][:])
         
-            if dist1>1:
-                if dist2 < 0.8:
+            if dist1>1.5:
+                if dist2 < 0.5:
                     move = convexhull_sorted_numpy[0:j+1]
                     convexhull_sorted_numpy = convexhull_sorted_numpy[j+1:]
                     convexhull_sorted_numpy = np.append(convexhull_sorted_numpy, move, axis = 0)
                 elif dist2 > 0.8:
                     convexhull_sorted_numpy = np.delete(convexhull_sorted_numpy,j)
-        #print(convexhull_sorted_numpy)
+        print(convexhull_sorted_numpy)
 
 
 
@@ -252,8 +251,10 @@ for i in range(len(clusters)):
         flag1 = False
         flag2 = False
         #flag3 = False
+        getend2 = False
+        getend3 = False
 
-        angle_clust = np.array([0,1]).reshape(-1,1)
+        angle_clust = np.empty([0,1]).reshape(-1,1)
 
         longline = np.empty([0,2])
         shortline = np.empty([0,2])
@@ -300,23 +301,19 @@ for i in range(len(clusters)):
                     line2_clust = np.append(line2_clust, [convexhull_sorted_numpy[j][:]], axis = 0)
                     cnt +=1
                     if(cnt >= 5):
-                        if 120>diff_angle(aback1,afront1)>80 or 120>diff_angle(aback2,afront2)>80:    
-                            flag2 = True    
-                    else:
-                        line2_clust = np.append(line2_clust, convexhull_sorted_numpy[length-5:length][:], axis = 0)
-                   
+                        if 120>diff_angle(aback1,afront1)>80 or 120>diff_angle(aback2,afront2)>80: flag2 = True
+                        else: getend2 = True
+                    else: getend2 = True
                 elif flag1 == True and flag2 == True:
                     line3_clust = np.append(line3_clust, [convexhull_sorted_numpy[j][:]], axis = 0)
                     cnt +=1
                     if(cnt >= 5):
                         if 120>diff_angle(aback1,afront1)>80 or 120>diff_angle(aback2,afront2)>80:    
                             car = False
-                    else: 
-                        line2_clust = np.append(line2_clust, convexhull_sorted_numpy[length-5:length][:], axis = 0)
-
-
-
-
+                        else: getend3 = True
+                    else: getend3 = True
+        if getend2: line2_clust = np.append(line2_clust, convexhull_sorted_numpy[length-5:length][:], axis = 0)
+        if getend3: line3_clust = np.append(line3_clust, convexhull_sorted_numpy[length-5:length][:], axis = 0)
                 # if 100>diff_angle(aback1,afront1)>80 or 100>diff_angle(aback2,afront2)>80:    
                 #     flag2 = True
             # elif flag1 == True and flag2 == True:
@@ -338,11 +335,13 @@ for i in range(len(clusters)):
             line1dy = line1_fit.coef_
             line1bias = line1_fit.intercept_ 
             line1pred = line1_fit.predict(xline1).reshape([len1,1])       
-            print('*'*8)
-            print(line1pred[:])
-            print('*'*20)
+            # print('*'*8)
+            # print(line1pred[:])
+            # print('*'*20)
     
         if line2_clust != np.empty([0,2]):
+
+            print(line2_clust[:][:,0])
             len2 = len(line2_clust[:][:,0])
             dis2 = get_distance(line2_clust[0],line2_clust[len2-1])
             # xline2 = line2_clust[:][:,0].reshape([len2,1])
@@ -353,87 +352,39 @@ for i in range(len(clusters)):
         else:
             car = False
             break
+        if line3_clust != np.empty([0,2]):
+            len3 = len(line3_clust[:][0])
+        #plot for check
+        # plt.figure()        
+        # plt.scatter(line1_clust[:][:,0],line1_clust[:][:,1],color ='black')
+        # plt.scatter(line2_clust[:][:,0],line2_clust[:][:,1],color ='blue')
+        # plt.plot(xline1,line1pred[:],color = 'red')
+        # plt.show()
+
+
+        ####################### Get Centroid #######################
+       
+        x1,y1 = line1_clust[0][0], line1_clust[0][1]
+        x2, y2 = line2_clust[0][0], line2_clust[0][1]
+        x3, y3 = line2_clust[len2-1][0], line2_clust[len2-1][1]
+        if line3_clust != np.empty([0,2]):
+            x3, y3 = line3_clust[len3-1][0], line3_clust[len3-1][1]
+        delx, dely = x1-x2, y1-y2
+        x4 =  x3+delx
+        y4 =  y3+dely
+
+        xlist = np.array([x1,x2,x3,x4])
+        ylist = np.array([y1,y2,y3,y4])
+        center = [(x1+x2+x3+x4)/4,(y1+y2+y3+y4)/4]
+        #yaw = get_angle(linedy,1)
 
         #plot for check
-        plt.figure()        
+        plt.figure()
+        plt.plot(xline1,line1pred[:],color = 'red')        
         plt.scatter(line1_clust[:][:,0],line1_clust[:][:,1],color ='black')
         plt.scatter(line2_clust[:][:,0],line2_clust[:][:,1],color ='blue')
-        plt.plot(xline1,line1pred[:],color = 'red')
+        plt.scatter(xlist,ylist,color ='red')
+        plt.scatter(center[0],center[1],color ='green')
         plt.show()
 
-
         break
-        
-    # temp_pcd = o3d.geometry.PointCloud()
-    # temp_pcd.points = o3d.utility.Vector3dVector(convexhull)
-
-    # if i%3 == 0:
-    #     temp_pcd.paint_uniform_color([1,0,0])
-    # elif i%3 == 1:
-    #     temp_pcd.paint_uniform_color([0,1,0])
-    # else:
-    #     temp_pcd.paint_uniform_color([0,0,1])
-
-
-
-    # # Set Visualizer and Draw x, y Axis
-    # vis = o3d.visualization.Visualizer()
-    # vis.create_window()
-    
-    # #Draw Axis
-    # vis.add_geometry(line_set)
-    # vis.run()
-    
-    # vis.add_geometry(temp_pcd)
-    # vis.run()
-        
-        ############ after convex hull , if not a car -> continue (next loop)
-        
-     
-'''
-# For Painting if it is a car
-if i%3 == 0:
-    clusterCloud_pcd.paint_uniform_color([1,0,0])
-elif i%3 == 1:
-    clusterCloud_pcd.paint_uniform_color([0,1,0])
-else:
-    clusterCloud_pcd.paint_uniform_color([0,0,1])
-# Visualization
-vis.add_geometry(clusterCloud_pcd)
-vis.run()'''
-    
-            
-
-# #print(car_count)
-# num += 1
-# #print (num)
-
-
-# # if want to pause at each frame 
-# input("Press Enter to continue...")
-
-# vis.clear_geometries()
-
-    
-    
-# vis.destroy_window()
-    
-
-#clusterCloud.paint_uniform_color([0.1, 0.9, 0.1])
-
-
-
-# Visualization
-#pcd_processed = o3d.geometry.PointCloud()
-#pcd_processed.points = o3d.utility.Vector3dVector(cloudoutliers)
-
-
-
-
-
-'''
-# Load a pcd data
-pcd_load = o3d.io.read_point_cloud("./kitti_pcd/pcd0000000000.pcd")
-pcd_downsample = pcd_load.voxel_down_sample(voxel_size=0.3)
-print(pcd_load)
-'''
