@@ -1,4 +1,5 @@
 
+
 # FreeRiderHMC Team
 # main_Ver.3    0708
 # Segment the road just by cutting the z values below threshold instead of RANSAC segmentation
@@ -227,24 +228,30 @@ for i in range(len(clusters)):
 
         '''arrange angle to start with first point of cluster'''
         #dist1 = ((convexhull_sorted_numpy[i][0] - convexhull_sorted_numpy[i+1][0])**2 + (convexhull_sorted_numpy[i][0] - convexhull_sorted_numpy[i+1][0])**2)
-        dist1 = get_distance(convexhull_sorted_numpy[i][:],convexhull_sorted_numpy[i+1][:])
-        dist2 = get_distance(convexhull_sorted_numpy[i+1][:],convexhull_sorted_numpy[i+2][:])
-        for j in range(length):
-            if dist1>0.8:
-                if dist2<0.2:
-                    move = convexhull_sorted_numpy[0:i+1]
-                    convexhull_sorted_numpy = convexhull_sorted_numpy[i+1:]
+        for j in range(length-2):
+            dist1 = get_distance(convexhull_sorted_numpy[j][:],convexhull_sorted_numpy[j+1][:])
+            dist2 = get_distance(convexhull_sorted_numpy[j+1][:],convexhull_sorted_numpy[j+2][:])
+        
+            if dist1>1:
+                if dist2 < 0.8:
+                    move = convexhull_sorted_numpy[0:j+1]
+                    convexhull_sorted_numpy = convexhull_sorted_numpy[j+1:]
                     convexhull_sorted_numpy = np.append(convexhull_sorted_numpy, move, axis = 0)
                 elif dist2 > 0.8:
-                    convexhull_sorted_numpy = np.delete(convexhull_sorted_numpy,i)
+                    convexhull_sorted_numpy = np.delete(convexhull_sorted_numpy,j)
         #print(convexhull_sorted_numpy)
+
+
+
         ################### Linear Regression ###################
-                        
+
+        ''' Initialization '''                
         line1_clust = np.empty([0,2])
         line2_clust = np.empty([0,2])
         line3_clust = np.empty([0,2])
         flag1 = False
         flag2 = False
+        #flag3 = False
 
         angle_clust = np.array([0,1]).reshape(-1,1)
 
@@ -280,21 +287,34 @@ for i in range(len(clusters)):
                 #print(diff_angle(aback1,afront1))
             
             
-                if flag1 == False and flag2 == False:
-                    if abs(x1-x2):
+                if flag1 == False:
+                    if get_distance([x1,y1],[x2,y2])<0.6:
                         line1_clust = np.append(line1_clust, [convexhull_sorted_numpy[j][:]], axis = 0)
-                    if 120>diff_angle(aback1,afront1)>85 or 120>diff_angle(aback2,afront2)>85:    
-                        flag1 = True
+                        if 120>diff_angle(aback1,afront1)>85 and 120>diff_angle(aback2,afront2)>85:    
+                            flag1 = True
+                    else:
+                        flag1= False
+                        car = False
+                        break
                 elif flag1 == True and flag2 == False:
                     line2_clust = np.append(line2_clust, [convexhull_sorted_numpy[j][:]], axis = 0)
                     cnt +=1
                     if(cnt >= 5):
                         if 120>diff_angle(aback1,afront1)>80 or 120>diff_angle(aback2,afront2)>80:    
                             flag2 = True    
+                    else:
+                        line2_clust = np.append(line2_clust, convexhull_sorted_numpy[length-5:length][:], axis = 0)
+                   
+                elif flag1 == True and flag2 == True:
+                    line3_clust = np.append(line3_clust, [convexhull_sorted_numpy[j][:]], axis = 0)
+                    cnt +=1
+                    if(cnt >= 5):
+                        if 120>diff_angle(aback1,afront1)>80 or 120>diff_angle(aback2,afront2)>80:    
                             car = False
-                            print('car')
                     else: 
                         line2_clust = np.append(line2_clust, convexhull_sorted_numpy[length-5:length][:], axis = 0)
+
+
 
 
                 # if 100>diff_angle(aback1,afront1)>80 or 100>diff_angle(aback2,afront2)>80:    
@@ -310,24 +330,29 @@ for i in range(len(clusters)):
             #make fitter
         line_fitter = LinearRegression()
         if line1_clust != np.empty([0,2]):
-            length = len(line1_clust[:][:,0])
-            xline1 = line1_clust[:][:,0].reshape([length,1])
-            yline1 = line1_clust[:][:,1].reshape([length,1])
+            len1 = len(line1_clust[:][:,0])
+            dis1 = get_distance(line1_clust[0],line1_clust[len1-1])
+            xline1 = line1_clust[:][:,0].reshape([len1,1])
+            yline1 = line1_clust[:][:,1].reshape([len1,1])
             line1_fit = line_fitter.fit(xline1,yline1)
             line1dy = line1_fit.coef_
             line1bias = line1_fit.intercept_ 
-            line1pred = line1_fit.predict(xline1).reshape([length,1])       
-            # print('*'*8)
-            # print(line1pred[:])
-            # print('*'*20)
+            line1pred = line1_fit.predict(xline1).reshape([len1,1])       
+            print('*'*8)
+            print(line1pred[:])
+            print('*'*20)
     
         if line2_clust != np.empty([0,2]):
-            length = len(line2_clust[:][:,0])
-            xline2 = line2_clust[:][:,0].reshape([length,1])
-            yline2 = line2_clust[:][:,1].reshape([length,1])
-            line2_fit = line_fitter.fit(xline2,yline2)
-            line2dy = line2_fit.coef_
-            line2bias = line2_fit.intercept_
+            len2 = len(line2_clust[:][:,0])
+            dis2 = get_distance(line2_clust[0],line2_clust[len2-1])
+            # xline2 = line2_clust[:][:,0].reshape([len2,1])
+            # yline2 = line2_clust[:][:,1].reshape([len2,1])
+            # line2_fit = line_fitter.fit(xline2,yline2)
+            # line2dy = line2_fit.coef_
+            # line2bias = line2_fit.intercept_
+        else:
+            car = False
+            break
 
         #plot for check
         plt.figure()        
@@ -335,6 +360,7 @@ for i in range(len(clusters)):
         plt.scatter(line2_clust[:][:,0],line2_clust[:][:,1],color ='blue')
         plt.plot(xline1,line1pred[:],color = 'red')
         plt.show()
+
 
         break
         
