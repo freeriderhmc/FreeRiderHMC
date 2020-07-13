@@ -1,3 +1,4 @@
+
 # FreeRiderHMC Team
 # main_Ver.3    0708
 # Segment the road just by cutting the z values below threshold instead of RANSAC segmentation
@@ -41,6 +42,9 @@ def diff_angle(ang1, ang2):
         diffang = abs(ang1-ang2)
     return diffang
 
+def get_distance(xy1,xy2):
+    distance = ((xy1[0]-xy2[0])**2 + (xy1[1]-xy2[1])**2)**0.5
+    return distance
 
 ########################### Variable init ##########################
 
@@ -221,6 +225,19 @@ for i in range(len(clusters)):
         #print(convexhull_sorted_numpy)    
 
 
+        '''arrange angle to start with first point of cluster'''
+        #dist1 = ((convexhull_sorted_numpy[i][0] - convexhull_sorted_numpy[i+1][0])**2 + (convexhull_sorted_numpy[i][0] - convexhull_sorted_numpy[i+1][0])**2)
+        dist1 = get_distance(convexhull_sorted_numpy[i][:],convexhull_sorted_numpy[i+1][:])
+        dist2 = get_distance(convexhull_sorted_numpy[i+1][:],convexhull_sorted_numpy[i+2][:])
+        for j in range(length):
+            if dist1>0.8:
+                if dist2<0.2:
+                    move = convexhull_sorted_numpy[0:i+1]
+                    convexhull_sorted_numpy = convexhull_sorted_numpy[i+1:]
+                    convexhull_sorted_numpy = np.append(convexhull_sorted_numpy, move, axis = 0)
+                elif dist2 > 0.8:
+                    convexhull_sorted_numpy = np.delete(convexhull_sorted_numpy,i)
+        #print(convexhull_sorted_numpy)
         ################### Linear Regression ###################
                         
         line1_clust = np.empty([0,2])
@@ -237,13 +254,16 @@ for i in range(len(clusters)):
         cnt = 0
         line1_clust = np.append(line1_clust, convexhull_sorted_numpy[0:5][:], axis = 0)
 
-        for j in range(length):
+        for j in range(length-1):
             #x_0~x_len-1
-            x=convexhull_sorted_numpy[j][0]
-            y=convexhull_sorted_numpy[j][1]
+            x1=convexhull_sorted_numpy[j][0]
+            y1=convexhull_sorted_numpy[j][1]
+            x2=convexhull_sorted_numpy[j+1][0]
+            y2=convexhull_sorted_numpy[j+1][1]
             
             
             if j-4 >0 and j+4 < length-1:
+
                 xback1 = convexhull_sorted_numpy[j-4][0]
                 yback1 = convexhull_sorted_numpy[j-4][1]
                 xback2 = convexhull_sorted_numpy[j-5][0] 
@@ -253,15 +273,16 @@ for i in range(len(clusters)):
                 xfront2 = convexhull_sorted_numpy[j+5][0]
                 yfront2 = convexhull_sorted_numpy[j+5][1]
 
-                aback1 = get_angle([xback1-x, yback1-y])
-                aback2 = get_angle([xback2-x, yback2-y])
-                afront1 = get_angle([xfront1-x, yfront1-y])
-                afront2 = get_angle([xfront2-x, yfront2-y])
-                print(diff_angle(aback1,afront1))
+                aback1 = get_angle([xback1-x1, yback1-y1])
+                aback2 = get_angle([xback2-x1, yback2-y1])
+                afront1 = get_angle([xfront1-x1, yfront1-y1])
+                afront2 = get_angle([xfront2-x1, yfront2-y1])
+                #print(diff_angle(aback1,afront1))
             
             
                 if flag1 == False and flag2 == False:
-                    line1_clust = np.append(line1_clust, [convexhull_sorted_numpy[j][:]], axis = 0)
+                    if abs(x1-x2):
+                        line1_clust = np.append(line1_clust, [convexhull_sorted_numpy[j][:]], axis = 0)
                     if 120>diff_angle(aback1,afront1)>85 or 120>diff_angle(aback2,afront2)>85:    
                         flag1 = True
                 elif flag1 == True and flag2 == False:
@@ -296,9 +317,9 @@ for i in range(len(clusters)):
             line1dy = line1_fit.coef_
             line1bias = line1_fit.intercept_ 
             line1pred = line1_fit.predict(xline1).reshape([length,1])       
-            print('*'*8)
-            print(line1pred[:])
-            print('*'*20)
+            # print('*'*8)
+            # print(line1pred[:])
+            # print('*'*20)
     
         if line2_clust != np.empty([0,2]):
             length = len(line2_clust[:][:,0])
