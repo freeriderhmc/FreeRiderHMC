@@ -382,6 +382,23 @@ for files in file_list:
             ylist = np.array([y1,y2,y3,y4])
             center = [(x1+x2+x3+x4)/4,(y1+y2+y3+y4)/4]
             #yaw = get_angle(linedy,1)
+            
+            x = center[0]
+            y = center[1]
+            yaw = get_angle([1,line2dy])*pi/180
+            l = (abs(x1-x4)**2+abs(y1-y4)**2)**0.5
+            w = (abs(x4-x3)**2+abs(y4-y3)**2)**0.5
+            h = z_max - z_min + 0.5
+            if(l<w):
+                temp = w
+                w = l
+                l = temp
+                yaw = get_angle([1,line1dy])*pi/180
+            if(0.8<w<2.8 and 1.2<l<7.1 and 1.2<h<2.9):
+                res = np.append(res, [[x,y, yaw, w, l, h]], axis = 0)
+                #flagflag = True
+            print(res)
+            print(res.shape)
 
             #plot for check
             plt.figure()
