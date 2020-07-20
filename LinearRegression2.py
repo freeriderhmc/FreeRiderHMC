@@ -72,6 +72,7 @@ line_set.colors = o3d.utility.Vector3dVector(colors)
 
 # Load binary data
 path = './2011_09_26/2011_09_26_drive_0005_sync/velodyne_points/data/'
+res = np.empty([0,6])
 
 file_list = loadData.load_data(path)
 num = 0
@@ -235,9 +236,11 @@ for files in file_list:
                         move = convexhull_sorted_numpy[0:h+1][:]
                         convexhull_sorted_numpy = convexhull_sorted_numpy[h+1:][:]
                         convexhull_sorted_numpy = np.append(convexhull_sorted_numpy, move, axis = 0)
+                        print('*')
                     elif dist2 > 0.8:
                         convexhull_sorted_numpy = np.delete(convexhull_sorted_numpy,h,axis = 0)
                         print(convexhull_sorted_numpy)
+                        
                     break
 
             length = len(convexhull_sorted_numpy)
@@ -262,7 +265,8 @@ for files in file_list:
             longline = np.empty([0,2])
             shortline = np.empty([0,2])
 
-            cnt = 0
+            cnt1 = 0
+            cnt2 = 0
             line1_clust = np.append(line1_clust, convexhull_sorted_numpy[0:5][:], axis = 0)
 
             for j in range(length-1):
@@ -302,18 +306,18 @@ for files in file_list:
                             break
                     elif flag1 == True and flag2 == False:
                         line2_clust = np.append(line2_clust, [convexhull_sorted_numpy[j][:]], axis = 0)
-                        cnt +=1
-                        if(cnt >= 3):
-                            if 120>diff_angle(aback1,afront1)>80 or 120>diff_angle(aback2,afront2)>80: 
+                        cnt1 +=1
+                        if(cnt1 >= 3):
+                            if 120>diff_angle(aback1,afront1)>85 or 120>diff_angle(aback2,afront2)>85: 
                                 flag2 = True
                                 getend2 = False
                             else: getend2 = True
                         else: getend2 = True
                     elif flag1 == True and flag2 == True:
                         line3_clust = np.append(line3_clust, [convexhull_sorted_numpy[j][:]], axis = 0)
-                        cnt +=1
-                        if(cnt >= 5):
-                            if 120>diff_angle(aback1,afront1)>80 or 120>diff_angle(aback2,afront2)>80:    
+                        cnt2 +=1
+                        if(cnt2 >= 3):
+                            if 120>diff_angle(aback1,afront1)>85 or 120>diff_angle(aback2,afront2)>85:    
                                 car = False
                             else: getend3 = True
                         else: getend3 = True
@@ -382,7 +386,7 @@ for files in file_list:
             ylist = np.array([y1,y2,y3,y4])
             center = [(x1+x2+x3+x4)/4,(y1+y2+y3+y4)/4]
             #yaw = get_angle(linedy,1)
-            
+
             x = center[0]
             y = center[1]
             yaw = get_angle([1,line2dy])*pi/180
@@ -397,16 +401,18 @@ for files in file_list:
             if(0.8<w<2.8 and 1.2<l<7.1 and 1.2<h<2.9):
                 res = np.append(res, [[x,y, yaw, w, l, h]], axis = 0)
                 #flagflag = True
+                #plot for check
+                plt.figure()
+                plt.plot(xline1,line1pred[:],color = 'red')        
+                plt.scatter(line1_clust[:][:,0],line1_clust[:][:,1],color ='black')
+                plt.scatter(line2_clust[:][:,0],line2_clust[:][:,1],color ='blue')
+                plt.scatter(xlist,ylist,color ='red')
+                plt.scatter(center[0],center[1],color ='green')
+                plt.show()
+                
             print(res)
             print(res.shape)
 
-            #plot for check
-            plt.figure()
-            plt.plot(xline1,line1pred[:],color = 'red')        
-            plt.scatter(line1_clust[:][:,0],line1_clust[:][:,1],color ='black')
-            plt.scatter(line2_clust[:][:,0],line2_clust[:][:,1],color ='blue')
-            plt.scatter(xlist,ylist,color ='red')
-            plt.scatter(center[0],center[1],color ='green')
-            plt.show()
+            
 
             break
