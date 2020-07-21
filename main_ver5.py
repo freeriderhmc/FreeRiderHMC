@@ -212,14 +212,18 @@ for files in file_list:
 
             line2_inliers = line1_outliers[inliers2_list[:],:]
             
-                        #################### Linear Regression ###################
+            #################### Linear Regression ###################
             line_fitter = LinearRegression()
+            len1 = len(line1_inliers[:][:,0])
+            len2 = len(line2_inliers[:][:,0])
 
-            xline1 = line1_inliers[:][0]
-            yline1 = line1_inliers[:][1]            
-            xline2 = line2_inliers[:][0]            
-            yline2 = line2_inliers[:][1]            
+            xline1 = line1_inliers[:][:,0].reshape(len1,1)
+            yline1 = line1_inliers[:][:,1].reshape(len1,1)
+            xline2 = line2_inliers[:][:,0].reshape(len2,1)
+            yline2 = line2_inliers[:][:,1].reshape(len2,1)
 
+            print(xline1)
+    
             len1 = len(line1_inliers[:][0])
             len2 = len(line2_inliers[:][0])
             line1_fit = line_fitter.fit(xline1,yline1)
