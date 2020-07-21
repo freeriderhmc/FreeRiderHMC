@@ -211,6 +211,69 @@ for files in file_list:
             inliers2_list, outliers2_list = seg.RansacLine(line1_outliers, 50, 0.15)
 
             line2_inliers = line1_outliers[inliers2_list[:],:]
+            
+                        #################### Linear Regression ###################
+            line_fitter = LinearRegression()
+
+            xline1 = line1_inliers[:][0]
+            yline1 = line1_inliers[:][1]            
+            xline2 = line2_inliers[:][0]            
+            yline2 = line2_inliers[:][1]            
+
+            len1 = len(line1_inliers[:][0])
+            len2 = len(line2_inliers[:][0])
+            line1_fit = line_fitter.fit(xline1,yline1)
+            line2_fit = line_fitter.fit(xline2,yline2)
+            line1dy = line1_fit.coef_
+            #line1bias = line1_fit.intercept_ 
+            line1pred = line1_fit.predict(xline1).reshape([len1,1])      
+            
+            line2dy = line2_fit.coef_       
+            line2pred = line2_fit.predict(xline1).reshape([len1,1])      
+
+            line1dict = {}
+            line2dict = {}
+            for i in range(0,len1):
+                line1dict[line1_inliers[i][0]] = line1_inliers[i][:]
+            
+            for i in range(0,len2):
+                line2dict[line2_inliers[i][0]] = line2_inliers[i][:]
+
+            line1dict_sorted = sorted(line1dict.items())
+            line2dict_sorted = sorted(line2dict.items())
+
+            line1_sorted = np.empty([0,2])
+            line2_sorted = np.empty([0,2])
+            
+            for j in range(0,length):
+                line1_sorted = np.append(line1_sorted, [line1dict_sorted[j][1]],axis = 0) 
+                line2_sorted = np.append(line2_sorted, [line2dict_sorted[j][1]],axis = 0) 
+
+            x1, y1 = line1_sorted[0][0], line1_sorted[0][1]
+            x2, y2 = line1_sorted[len1-1]][0], line1_sorted[len-1][1]
+            x3, y3 = line2_sorted[0]][0], line2_sorted[0][1]
+            x4, y4 = line2_sorted[len1-1]][0], line2_sorted[len-1][1] 
+
+            dis1= get_distance(line1_sorted[0],line1_sorted[len1-1])
+            dis2= get_distance(line2_sorted[0],line2_sorted[len1-1])
+
+            ####################### Get result #########################
+
+
+            center = [line1_sorted[0][0]+
+            
+            h = z_max - z_min + 0.5
+            if dis1 > dis2:
+                l = dis1
+                w = dis2
+                yaw = line1dy                 
+            else:
+                l = dis2
+                w = dis1
+                yaw = line2dy
+                
+            if(0.8<w<2.8 and 1.2<l<7.1 and 1.2<h<2.9):
+                res = np.append(res, [[x,y, yaw, w, l, h]], axis = 0)
 
             #points1_for_plt_x = line1[:,0]
             #points1_for_plt_y = line1[:,1]
