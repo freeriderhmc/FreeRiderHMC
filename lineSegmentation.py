@@ -12,6 +12,8 @@ import random
 import math
 
 def RansacLine(points, maxIterations, distanceTol):
+    if(len(points)<1):
+        return None
     # Initialize unordered set inliersResult
     inliersResult = set({})
     outliersResult = set({})
@@ -65,7 +67,7 @@ def RansacLine(points, maxIterations, distanceTol):
         
         maxIterations -= 1
 
-    return list(inliersResult), list(outliersResult), Line_a, Line_b, Line_c
+    return list(inliersResult), list(outliersResult)
 
 if __name__ == "__main__":
     print("Error.. Why PlaneSegmentation execute")
