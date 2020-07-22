@@ -114,6 +114,7 @@ for files in file_list:
     clustersCloud = np.empty(shape = [0,3])
     # Visualize Clusters
     for i in range(len(clusters)):
+
         car_count = 0
         ###########################
         # Find the Cars
@@ -142,8 +143,8 @@ for files in file_list:
         '''
 
         # slicing by z values
-        clusterCloud = clusterCloud[(clusterCloud[:,2] >= z_for_slicing - 0.07)]#0.15
-        clusterCloud = clusterCloud[(clusterCloud[:,2] <= z_for_slicing + 0.07)]
+        clusterCloud = clusterCloud[(clusterCloud[:,2] >= z_for_slicing - 0.08)]#0.15
+        clusterCloud = clusterCloud[(clusterCloud[:,2] <= z_for_slicing + 0.08)]
         
                 
         x_max = np.max(clusterCloud[:,0])
@@ -157,36 +158,34 @@ for files in file_list:
         z_len = abs(z_min - z_max)
 
         if  carx_min < x_len < carx_max and cary_min < y_len < cary_max and carz_min < z_len < carz_max:
-            car_count += 1
 
+            
+            car_count += 1
             # Convert Numpy to Pointcloud
             clusterCloud_pcd = o3d.geometry.PointCloud()
             clusterCloud_pcd.points = o3d.utility.Vector3dVector(clusterCloud)
 
             convexhull = clusterCloud[(clusterCloud_pcd.compute_convex_hull()[1])[:],:]
 
-
-
             clusterCloud_2D = convexhull[:,0:2]
             points_x = clusterCloud_2D[:,0]
             points_y = clusterCloud_2D[:,1]
 
-
             # Line Segmentation to extract two lines
             inliers1_list, outliers1_list , _, _, _= seg.RansacLine(clusterCloud_2D, 120, 0.1)
+            if(len(inliers1_list)==0):
+                break
 
             line1_inliers = clusterCloud_2D[inliers1_list[:], :]
             line1_outliers = clusterCloud_2D[outliers1_list[:], :]
             
-
-            #outliers = clusterCloud_2D[outliers1_list[:],:]
             inliers2_list, outliers2_list ,_,_,_= seg.RansacLine(line1_outliers, 60, 0.2)
+            if(len(inliers2_list)==0):
+                break
 
             line2_inliers = line1_outliers[inliers2_list[:],:]
 
-            ############################################################################
             #######################################Linear Regression ###################
-            ############################################################################
             line_fitter1 = LinearRegression()
             line_fitter2 = LinearRegression()
             len1 = len(line1_inliers[:][:,0])
@@ -200,7 +199,6 @@ for files in file_list:
             line1_fit = line_fitter1.fit(xline1,yline1)
             line2_fit = line_fitter2.fit(xline2,yline2)
             line1dy = line1_fit.coef_
-            # line1bias = line1_fit.intercept_
             line1pred = line1_fit.predict(xline1).reshape([len1,1])
             
             line2dy = line2_fit.coef_
@@ -210,7 +208,6 @@ for files in file_list:
             line2dict = {}
             for i in range(0,len1):
                 line1dict[line1_inliers[i][0]] = line1_inliers[i][:]
-            
             for i in range(0,len2):
                 line2dict[line2_inliers[i][0]] = line2_inliers[i][:]
 
@@ -223,7 +220,6 @@ for files in file_list:
             line1_sorted = np.empty([0,2])
             line2_sorted = np.empty([0,2])
             
-            
             for j in range(0,len1):
                 line1_sorted = np.append(line1_sorted, [line1dict_sorted[j][1]],axis = 0)
 
@@ -233,38 +229,37 @@ for files in file_list:
             x1, y1 = line1_sorted[0][0], line1_sorted[0][1]
             x2, y2 = line1_sorted[len1-1][0], line1_sorted[len1-1][1]
             x3, y3 = line2_sorted[0][0], line2_sorted[0][1]
+            x4, y4 = line2_sorted[len2-1][0], line2_sorted[len2-1][1]
 
             x1x3 = ((x1-x3)**2+(y1-y3)**2)**0.5
             x2x3 = ((x2-x3)**2+(y2-y3)**2)**0.5
+            x1x4 = ((x1-x4)**2+(y1-y4)**2)**0.5
+            x2x4 = ((x2-x4)**2+(y2-y4)**2)**0.5
+            w = ((x3-x4)**2+(y3-y4)**2)**0.5
 
-            if(x1x3 < 0.4):
-                x3, y3 = line2_sorted[len2-1][0], line2_sorted[len2-1][1]
-                delx, dely = x3-x1, y3-y1
-                x4 =  x2+delx
-                y4 =  y2+dely
-                centroid_x = (x1+x2+x3+x4)/4
-                centroid_y = (y1+y2+y3+y4)/4
-                w = x1x3
+            delx = x2-x1
+            dely = y2-y1
 
-            elif(x2x3 < 0.4):
-                x3, y3 = line2_sorted[len2-1][0], line2_sorted[len2-1][1]
-                delx, dely = x3-x2, y3-y2
-                x4 =  x1+delx
-                y4 =  y1+dely
-                centroid_x = (x1+x2+x3+x4)/4
-                centroid_y = (y1+y2+y3+y4)/4
-                w = x2x3
-
-            else:
-                if(x1x3 < x2x3):
-                    centroid_x = (x2+x3)/2
-                    centroid_y = (y2+y3)/2
-                    w = x1x3
+            if(x2x3<x1x3):
+                if(x2x4<x2x3):
+                    x4 = x3-delx
+                    y4 = y3-dely
                 else:
-                    centroid_x = (x1+x3)/2
-                    centroid_y = (y1+y3)/2
-                    w = x2x3
+                    x3 = x4-delx
+                    y3 = y4-dely
+            
+            else:
+                if(x1x4<x1x3):
+                    x4 = x3+delx
+                    y4 = y3+dely
 
+                else:
+                    x3 = x4+delx
+                    y3 = y4+dely
+
+            xlist = np.array([x1,x2,x3,x4])
+            ylist = np.array([y1,y2,y3,y4])
+            center = [(x1+x2+x3+x4)/4,(y1+y2+y3+y4)/4]
             yaw = get_angle([1,line1dy])
             l = (abs(x1-x2)**2+abs(y1-y2)**2)**0.5
             h = z_max - z_min + 0.5
@@ -277,16 +272,18 @@ for files in file_list:
 
             ang1 = get_angle([1, line1dy])*180/pi
             ang2 = get_angle([1, line2dy])*180/pi
-            print(abs(ang1-ang2))
-            if(65<abs(ang1-ang2)<110 ):
-                res = np.append(res, [[centroid_x,centroid_y, yaw, w, l, h]], axis = 0)
-
-                # plt.figure()
-                # plt.plot(points_x, points_y, 'g*')
-                # plt.plot(line1_inliers[:,0],line1_inliers[:,1], 'o')
-                # plt.plot(line2_inliers[:,0],line2_inliers[:,1], 'ro')
-                # plt.scatter(centroid_x,centroid_y,color ='blue')
-                # plt.show()
+            #print("angle is : " , abs(ang1-ang2))
+            if(62<abs(ang1-ang2)<131.2):
+                res = np.append(res, [[center[0],center[1], yaw, w, l, h]], axis = 0)
+                #print(x1, y1, x2, y2, x3, y3)
+                #plt.figure()
+                #plt.plot(points_x, points_y, 'g*')
+                #plt.plot(line1_inliers[:,0],line1_inliers[:,1], 'o')
+                #plt.plot(line2_inliers[:,0],line2_inliers[:,1], 'ro')
+                
+                #plt.scatter(center[0],center[1],color ='black')
+                #plt.scatter(xlist,ylist, color='green')
+                #plt.show()
 
             '''
             temp_pcd = o3d.geometry.PointCloud()
