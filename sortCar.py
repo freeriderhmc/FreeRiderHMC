@@ -19,6 +19,7 @@ def get_angle(input_list):
     return angle
 
 def sort_Car(clusterCloud, z_max, z_min):
+    
     # Convert Numpy to Pointcloud
     clusterCloud_pcd = o3d.geometry.PointCloud()
     clusterCloud_pcd.points = o3d.utility.Vector3dVector(clusterCloud)
@@ -26,19 +27,24 @@ def sort_Car(clusterCloud, z_max, z_min):
     convexhull = clusterCloud[(clusterCloud_pcd.compute_convex_hull()[1])[:],:]
 
     clusterCloud_2D = convexhull[:,0:2]
-    points_x = clusterCloud_2D[:,0]
-    points_y = clusterCloud_2D[:,1]
+    #points_x = clusterCloud_2D[:,0]
+    #points_y = clusterCloud_2D[:,1]
 
     # Line Segmentation to extract two lines
-    inliers1_list, outliers1_list = seg.RansacLine(clusterCloud_2D, 120, 0.1)
-    if((len(inliers1_list)==0 )or (len(outliers1_list)==0)):
+    inliers1_list, outliers1_list = seg.RansacLine(clusterCloud_2D, 140, 0.1)
+    if(len(inliers1_list)==0 or len(outliers1_list)==0):
         return None
 
     line1_inliers = clusterCloud_2D[inliers1_list[:], :]
     line1_outliers = clusterCloud_2D[outliers1_list[:], :]
+    if(len(line1_outliers)==0):
+        return None
 
-    inliers2_list, outliers2_list = seg.RansacLine(line1_outliers, 60, 0.2)
-    if(len(inliers2_list)==0):
+    tmp = seg.RansacLine(line1_outliers, 70, 0.2)
+
+    if(tmp is not None):
+        inliers2_list, _ = tmp
+    else:
         return None
 
     line2_inliers = line1_outliers[inliers2_list[:],:]
@@ -57,22 +63,17 @@ def sort_Car(clusterCloud, z_max, z_min):
     line1_fit = line_fitter1.fit(xline1,yline1)
     line2_fit = line_fitter2.fit(xline2,yline2)
     line1dy = line1_fit.coef_
-    line1pred = line1_fit.predict(xline1).reshape([len1,1])
+    #line1pred = line1_fit.predict(xline1).reshape([len1,1])
 
     line2dy = line2_fit.coef_
-    line2pred = line2_fit.predict(xline2).reshape([len2,1])
+    #line2pred = line2_fit.predict(xline2).reshape([len2,1])
 
     line1dict = {}
     line2dict = {}
-
-    print('before line1dict')
     for i in range(0,len1):
         line1dict[line1_inliers[i][0]] = line1_inliers[i][:]
-        print('after line1dict')
-    print('before line2dict')
     for i in range(0,len2):
         line2dict[line2_inliers[i][0]] = line2_inliers[i][:]
-        print('after line2dict')
 
     line1dict_sorted = sorted(line1dict.items())
     line2dict_sorted = sorted(line2dict.items())
@@ -120,8 +121,8 @@ def sort_Car(clusterCloud, z_max, z_min):
             x3 = x4+delx
             y3 = y4+dely
 
-    xlist = np.array([x1,x2,x3,x4])
-    ylist = np.array([y1,y2,y3,y4])
+    #xlist = np.array([x1,x2,x3,x4])
+    #ylist = np.array([y1,y2,y3,y4])
     center = [(x1+x2+x3+x4)/4,(y1+y2+y3+y4)/4]
     yaw = get_angle([1,line1dy])
     l = (abs(x1-x2)**2+abs(y1-y2)**2)**0.5
@@ -135,13 +136,13 @@ def sort_Car(clusterCloud, z_max, z_min):
 
     ang1 = get_angle([1, line1dy])*180/pi
     ang2 = get_angle([1, line2dy])*180/pi
-
     if(62<abs(ang1-ang2)<131.2):
-        return [center[0],center[1], yaw, w, l, h]
+        if(w<2.8 and l<7.1):
+            return [center[0],center[1], yaw, w, l, h]
     
     else:
         return None
 
 
 if __name__ == "__main__":
-    print("Error.. Why sortCar Module execute")
+    print("Error.. Why loadData Module execute")
