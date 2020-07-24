@@ -1,3 +1,4 @@
+
 # lineSegmentation Module
 # Using RANSAC algorithm
 # author Aaron Brown
@@ -12,13 +13,12 @@ import random
 import math
 
 def RansacLine(points, maxIterations, distanceTol):
-    if(len(points)<1):
+    if(len(points)<2):
         return None
     # Initialize unordered set inliersResult
     inliersResult = set({})
     outliersResult = set({})
-    Line_a = Line_b = Line_c = 0
-    
+    #Line_a = Line_b = Line_c = 0
     while maxIterations:
         # Initialize unordered set inliers
         inliers = set({})
@@ -27,8 +27,9 @@ def RansacLine(points, maxIterations, distanceTol):
         # Pick 2 Random Samples
         while len(inliers) < 2 :
             inliers.add(random.randint(0,len(points)-1))
-
+        
         inliers_iter = inliers.__iter__()
+
         itr = next(inliers_iter)
         x1 = points[itr][0]
         y1 = points[itr][1]
@@ -61,11 +62,14 @@ def RansacLine(points, maxIterations, distanceTol):
         if len(inliers) > len(inliersResult):
             inliersResult = inliers
             outliersResult = outliers
-            Line_a = a
-            Line_b = b
-            Line_c = c
+            #Line_a = a
+            #Line_b = b
+            #Line_c = c
         
         maxIterations -= 1
+
+    if(len(outliersResult)==0):
+        return list(inliersResult), []
 
     return list(inliersResult), list(outliersResult)
 
