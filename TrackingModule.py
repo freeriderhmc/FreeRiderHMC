@@ -29,6 +29,8 @@ class track:
         self.Age = 1
         self.Activated = 0
         self.DelCnt = 0
+        self.trace_x = []
+        self.trace_y = []
 
 
     def sigma_points(self,P):
@@ -139,3 +141,5 @@ class track:
             self.P = P_x - K @ P_z @ K.T
             self.Age += 1
             self.DelCnt = 0
+
+            

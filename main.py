@@ -37,9 +37,9 @@ Track_list = []
 sys.setrecursionlimit(5000)
 
 # Set Car Standard
-carz_min, carz_max = 0, 2
-carx_min, carx_max = 1.5, 5
-cary_min, cary_max = 1.5, 5
+carz_min, carz_max = 0, 3
+carx_min, carx_max = 1, 7.5
+cary_min, cary_max = 1, 7.5
 
 # Set Visualizer and Draw x, y Axis
 #vis = o3d.visualization.Visualizer()
@@ -208,6 +208,19 @@ for files in file_list:
                 
                 # Initialize Tracks' processed check
                 Track_list[i].processed = 0
+
+                # Save Trace of the Track
+                if Track_list[i].Activated == 1:
+                    state_x_temp = Track_list[i].state[0]
+                    state_y_temp = Track_list[i].state[1]
+                    Track_list[i].trace_x.append(state_x_temp)
+                    Track_list[i].trace_y.append(state_y_temp)
+                    
+                    # Keep the length of trace by 20
+                    '''if len(Track_list[i].trace) > 20:
+                        del Track_list[i].trace[0]'''
+                    #print(len(Track_list[i].trace))
+
         except:
             print("Track was deleted")
 
@@ -224,6 +237,11 @@ for files in file_list:
         if Track_list[i].Activated == 1:
             plt.plot(Track_list[i].state[0], Track_list[i].state[1], 'b*')
             plt.text(Track_list[i].state[0], Track_list[i].state[1], 'Track{}'.format(i+1))
+            
+            # Plot Track's trace
+            #for j in range(0, len(Track_list[i].trace)):
+            #    trace_for_plot
+            plt.plot(Track_list[i].trace_x[:], Track_list[i].trace_y[:], 'g')             
     plt.show()
     
     for i in range(0, len(Track_list)):
