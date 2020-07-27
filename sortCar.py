@@ -1,16 +1,9 @@
-import sys
-import os
 import numpy as np
 import open3d as o3d
 import math
-import operator
-from sklearn.cluster import MeanShift
-from sklearn.neighbors import KDTree
-from matplotlib import pyplot as plt
 from sklearn.linear_model import LinearRegression
 
 import lineSegmentation as seg
-import loadData
 
 pi = 3.141592653589793238
 
@@ -31,21 +24,28 @@ def sort_Car(clusterCloud, z_max, z_min):
     #points_y = clusterCloud_2D[:,1]
 
     # Line Segmentation to extract two lines
-    inliers1_list, outliers1_list = seg.RansacLine(clusterCloud_2D, 140, 0.1)
+    
+    tmp1 = seg.RansacLine(clusterCloud_2D, 140, 0.1)
+    if(tmp1 is not None):
+        inliers1_list, outliers1_list = tmp1
+    else:
+        return None, None
+
     if(len(inliers1_list)==0 or len(outliers1_list)==0):
-        return None
+        return None, None
 
     line1_inliers = clusterCloud_2D[inliers1_list[:], :]
     line1_outliers = clusterCloud_2D[outliers1_list[:], :]
     if(len(line1_outliers)==0):
-        return None
+        return None, None
 
     tmp = seg.RansacLine(line1_outliers, 70, 0.2)
-
+    
     if(tmp is not None):
+        
         inliers2_list, _ = tmp
     else:
-        return None
+        return None, None
 
     line2_inliers = line1_outliers[inliers2_list[:],:]
 
@@ -121,8 +121,6 @@ def sort_Car(clusterCloud, z_max, z_min):
             x3 = x4+delx
             y3 = y4+dely
 
-    #xlist = np.array([x1,x2,x3,x4])
-    #ylist = np.array([y1,y2,y3,y4])
     center = [(x1+x2+x3+x4)/4,(y1+y2+y3+y4)/4]
     yaw = get_angle([1,line1dy])
     l = (abs(x1-x2)**2+abs(y1-y2)**2)**0.5
@@ -137,12 +135,15 @@ def sort_Car(clusterCloud, z_max, z_min):
     ang1 = get_angle([1, line1dy])*180/pi
     ang2 = get_angle([1, line2dy])*180/pi
     if(62<abs(ang1-ang2)<131.2):
+
         if(w<2.8 and l<7.1):
-            return [center[0],center[1], yaw, w, l, h]
+            return [center[0], center[1], yaw], [w, l,h]
+        else:
+            return None, None
     
     else:
-        return None
+        return None, None
 
 
 if __name__ == "__main__":
-    print("Error.. Why loadData Module execute")
+    print("Error.. Why sortCar Module execute")
