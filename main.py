@@ -266,6 +266,9 @@ for i in range(validtracklistnum):
     state = Track_list_valid[i].history_state
     framenum = frame_num
     save_to_csv(index, start, duration, state, framenum)
+    
+# reach to csv file
+# csv_file = pd.read_csv('{}.csv'.format(i), index_col=0) # set i~
 
 
 '''for i in range(len(Track_list)):
