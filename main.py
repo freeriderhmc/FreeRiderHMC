@@ -5,16 +5,11 @@ import open3d as o3d
 import time
 import math
 import operator
-from sklearn.cluster import MeanShift
-from sklearn.neighbors import KDTree
 from matplotlib import pyplot as plt
-from sklearn.linear_model import LinearRegression
 
-import clusteringModule as clu
-import lineSegmentation as seg
 import loadData
-import sortCar as socar
-from TrackingModule import track
+import sortCar_modified as socar
+from TrackingModule_modified import track
 
 ####################################################
 ########### Setting ################################
@@ -32,6 +27,7 @@ mod = sys.modules[__name__]
 
 # Set Track list
 Track_list = []
+Track_list_valid = []
 
 # Expand iteration limit
 sys.setrecursionlimit(5000)
@@ -71,7 +67,8 @@ pre_time_stamp = None
 
 # get points from all lists
 for files in file_list:
-    res = np.empty([0,6])
+    res = np.empty([0,3])
+    box = np.empty([0,3])
     print("{}th Frame".format(frame_num + 1))
     # Draw Axis
     #vis.add_geometry(line_set)
@@ -118,7 +115,7 @@ for files in file_list:
 
     # Clustering Pointcloud
     # adjust the threshold into Clustering
-    labels = np.asanyarray(cloud_for_clustering.cluster_dbscan(0.5,2))
+    labels = np.asanyarray(cloud_for_clustering.cluster_dbscan(0.5,3))
     #print("number of estimated clusters : ", len(clusters))
     #print("How much time for Clustering")
     #print(time.time() - start)
@@ -162,24 +159,26 @@ for files in file_list:
         z_len = abs(z_min - z_max)
 
         if  carx_min < x_len < carx_max and cary_min < y_len < cary_max and carz_min < z_len < carz_max:
-            templist = socar.sort_Car(clusterCloud, z_max, z_min)
-            if(templist is not None):
-                res = np.append(res, [templist], axis = 0)
+            templist_res, templist_box = socar.sort_Car(clusterCloud, z_max, z_min)
+            if(templist_box is not None and templist_box is not None):
+                res = np.append(res, [templist_res], axis = 0)
+                box = np.append(box, [templist_box], axis = 0)
         
-    
 
     ########################################################################
     ############################## Tracking ################################
     ########################################################################
-    print("how many meaured?" , len(res))
-    print(res[:])
+    #print("how many meaured?" , len(res))
+    #print(res[:])
 
     # z_meas == res
     z_processed = np.zeros(len(res))
     ########## Track Update #############
     if Track_list:
         for i in range(0,len(Track_list)):
-            Track_list[i].unscented_kalman_filter(res, z_processed, dt)
+            if Track_list[i].dead_flag == 1:
+                continue
+            Track_list[i].unscented_kalman_filter(res, box, z_processed, dt)
 
     ########## Create Track #############
     for i in range(0, len(z_processed)):
@@ -187,44 +186,39 @@ for files in file_list:
             continue
         
         # z_meas[i] that are not used : Create new track
-        Track = track(res[i])
+        Track = track(res[i], box[i], frame_num)
         Track_list.append(Track)
     
     ########## Track Management #########
     if Track_list:
         try:
             for i in range(0, len(Track_list)):
+
+                # Dismiss DeadTrack
+                if Track_list[i].dead_flag == 1:
+                    continue
+
                 # Activate Track
-                if Track_list[i].Activated == 0 and Track_list[i].Age >= 5:
+                if Track_list[i].Activated == 0 and Track_list[i].Age >= 10:
                     Track_list[i].Activated = 1
                 
                 # deActivate Track
-                if Track_list[i].Activated == 1 and Track_list[i].DelCnt >= 5:
-                    Track_list[i].Activated = 0
+                if Track_list[i].Activated == 1 and Track_list[i].DelCnt >= 10:
+                    Track_list[i].dead_flag = 1
                 
-                # Delete Track
-                if Track_list[i].DelCnt >= 10:
-                    del Track_list[i]
+                '''# Delete Track
+                if Track_list[i].DelCnt >= 20:
+                    #del Track_list[i]
+                    Track_list[i].dead_flag = 1'''
                 
                 # Initialize Tracks' processed check
                 Track_list[i].processed = 0
-
-                # Save Trace of the Track
-                if Track_list[i].Activated == 1:
-                    state_x_temp = Track_list[i].state[0]
-                    state_y_temp = Track_list[i].state[1]
-                    Track_list[i].trace_x.append(state_x_temp)
-                    Track_list[i].trace_y.append(state_y_temp)
-                    
-                    # Keep the length of trace by 20
-                    '''if len(Track_list[i].trace) > 20:
-                        del Track_list[i].trace[0]'''
-                    #print(len(Track_list[i].trace))
+                
 
         except:
             print("Track was deleted")
 
-    # Visualization
+    '''# Visualization
     plt.figure()
     plt.xlim(-20,20)
     plt.ylim(-20,20)
@@ -242,11 +236,33 @@ for files in file_list:
             #for j in range(0, len(Track_list[i].trace)):
             #    trace_for_plot
             plt.plot(Track_list[i].trace_x[:], Track_list[i].trace_y[:], 'g')             
-    plt.show()
+    plt.show()'''
     
-    for i in range(0, len(Track_list)):
-        print("Track value: ".format(i), Track_list[i].state)
+    #for i in range(0, len(Track_list)):
+    #    print("Track value: ".format(i), Track_list[i].state)
 
     pre_time_stamp = time_stamp
     frame_num += 1    
     #input("Press Enter to continue...")
+
+for i in range(0, len(Track_list)):
+    if Track_list[i].Activated == 1:
+        Track_list_valid.append(Track_list[i])
+
+print("# of all track_list : ", len(Track_list))
+print("# of valid track_list : ", len(Track_list_valid))
+
+
+'''for i in range(len(Track_list)):
+    print("Track_list {}-th all state".format(i+1))
+    print(Track_list[i].history_state)
+    plt.figure()
+    plt.plot(range(1,len(Track_list[i].history_state) + 1) , Track_list[i].history_state[:,0], label = 'x_point', color = 'b')
+    plt.plot(range(1,len(Track_list[i].history_state) + 1) , Track_list[i].history_state[:,1], label = 'y_point', color = 'g')
+    plt.plot(range(1,len(Track_list[i].history_state) + 1) , Track_list[i].history_state[:,2], label = 'velocity', color = 'r')
+    plt.plot(range(1,len(Track_list[i].history_state) + 1) , Track_list[i].history_state[:,3], label = 'yaw-angle', color = 'c')
+    plt.plot(range(1,len(Track_list[i].history_state) + 1) , Track_list[i].history_state[:,4], label = 'yaw_rate', color = 'm')
+    plt.plot(range(1,len(Track_list[i].history_state) + 1) , Track_list[i].history_box[:,0], label = 'width', color = 'y')
+    plt.plot(range(1,len(Track_list[i].history_state) + 1) , Track_list[i].history_box[:,1], label = 'length', color = 'k')
+    plt.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+    plt.show()'''
