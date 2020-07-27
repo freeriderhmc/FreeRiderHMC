@@ -21,6 +21,12 @@ def get_angle(input_list):
     angle = math.atan2(input_list[1], input_list[0])
     return angle
 
+def save_to_csv(index, start, duration, state, framenum):
+    datalist = np.full((start-1,5),np.nan)
+    datalist = np.append(datalist, state, axis = 0)
+    datalist = np.append(datalist, np.full((framenum-start-duration+1, 5), np.nan), axis = 0)
+    pd.DataFrame(datalist).to_csv('{}.csv'.format(index))
+
 
 # Set mod
 mod = sys.modules[__name__]
@@ -249,8 +255,17 @@ for i in range(0, len(Track_list)):
     if Track_list[i].Activated == 1:
         Track_list_valid.append(Track_list[i])
 
+validtracklistnum =len(Track_list_valid)
 print("# of all track_list : ", len(Track_list))
-print("# of valid track_list : ", len(Track_list_valid))
+print("# of valid track_list : ", validtracklistnum)
+
+for i in range(validtracklistnum):
+    index = i
+    start = Track_list_valid[i].start
+    duration = len(Track_list_valid[i].history_state)
+    state = Track_list_valid[i].history_state
+    framenum = frame_num
+    save_to_csv(index, start, duration, state, framenum)
 
 
 '''for i in range(len(Track_list)):
