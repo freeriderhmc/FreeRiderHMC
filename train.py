@@ -8,6 +8,13 @@ from tensorflow.keras.models import load_model
 
 # first read every single csv files and make one csv file for training only - make function!!!
 
+def seperate_data(path, num, span):
+  # make new csv file
+  # 
+  # 
+
+def load_data(span, group):
+  
 dataset = pd.read_csv('training.csv', index_col=0)
 
 # Extract out states and labels
@@ -25,9 +32,9 @@ X_train = data[:n_train]
 y_train = np.array(y_data[:n_train])
 
 model = Sequential()
-model.add(Embedding(3, 32)) # embedding vector 32 levels
-model.add(LSTM(32)) # RNN cell hidden_size 32, SimpleRNN
-model.add(Dense(3, activation='softmax')) #if classify->sigmoid
+# model.add(Embedding(3, 32)) # embedding vector 32 levels
+model.add(LSTM(256, input_shape=(seq_len, 3))) # RNN cell hidden_size 32, SimpleRNN
+model.add(Dense(2, activation='softmax')) #if classify->sigmoid
 
 es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=4)
 mc = ModelCheckpoint('best_model.h5', monitor='val_acc', mode='max', verbose=1, save_best_only=True)
