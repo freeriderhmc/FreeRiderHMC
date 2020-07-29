@@ -8,22 +8,21 @@ from tensorflow.keras.models import load_model
 
 # first read every single csv files and make one csv file for training only - make function!!!
 
-# 1.csv to (1_normal.csv and 1_yawchng.csv)
-def seperate_data(path,tracknum, cnt, span):
+# 1.csv to (1_normal.csv and 1_lanechng.csv 1_left.csv)
+def seperate_data(path, tracknum):
   rawdf = pd.read_csv('{}.csv'.format(tracknum))
   ansdf = pd.read_csv('{}_ans.csv'.format(tracknum))
   temp = pd.merge(rawdf, ansdf, left_on="x", right_index = True).dropna(axis=0)
   normal = temp[temp['ans']==0]
   lanechng = temp[temp['ans']==1]
   left = temp[temp['ans']==2]
-  # 1.csv, 1_ans.csv 파일 불러와서 합치기
-  # 
-  # 
   pd.DataFrame(normal).to_csv('{}_normal.csv'.format(tracknum))
   pd.DataFrame(lanechng).to_csv('{}_lanechng.csv'.format(tracknum))
   pd.DataFrame(left).to_csv('{}_left.csv'.format(tracknum))
 
-def load_data(span, group):
+# in one data folder
+def load_data(cnt, span, group):
+  
 ''' 
 def sequential_window_dataset(series, window_size):
     series = tf.expand_dims(series, axis=-1)
