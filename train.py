@@ -9,16 +9,16 @@ from tensorflow.keras.models import load_model
 # first read every single csv files and make one csv file for training only - make function!!!
 
 # 1.csv to (1_normal.csv and 1_lanechng.csv 1_left.csv)
-def seperate_data(path, tracknum):
-  rawdf = pd.read_csv('{}.csv'.format(tracknum))
-  ansdf = pd.read_csv('{}_ans.csv'.format(tracknum))
-  temp = pd.merge(rawdf, ansdf, left_on="x", right_index = True).dropna(axis=0)
-  normal = temp[temp['ans']==0]
-  lanechng = temp[temp['ans']==1]
-  left = temp[temp['ans']==2]
-  pd.DataFrame(normal).to_csv('{}_normal.csv'.format(tracknum))
-  pd.DataFrame(lanechng).to_csv('{}_lanechng.csv'.format(tracknum))
-  pd.DataFrame(left).to_csv('{}_left.csv'.format(tracknum))
+def seperate_data(tracknum):
+    rawdf = pd.read_csv('{}.csv'.format(tracknum), index_col=0)
+    ansdf = pd.read_csv('{}_ans.csv'.format(tracknum), index_col = 0)
+    temp = pd.merge(rawdf, ansdf, left_on="0", left_index = True,right_index = True, how='left').dropna(axis=0)
+    normal = temp[temp['ans']==0]
+    lanechng = temp[temp['ans']==1]
+    left = temp[temp['ans']==2]
+    pd.DataFrame(normal).to_csv('{}_normal.csv'.format(tracknum))
+    pd.DataFrame(lanechng).to_csv('{}_lanechng.csv'.format(tracknum))
+    pd.DataFrame(left).to_csv('{}_left.csv'.format(tracknum))
 
 # in one data folder
 def load_data(cnt, span, group):
