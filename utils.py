@@ -3,6 +3,8 @@ tf.disable_v2_behavior()
 import pandas as pd
 import numpy as np
 
+
+
 def seperate_data(tracknum, cnt, span):
     rawdf = pd.read_csv('{}.csv'.format(tracknum), index_col=0)
     ansdf = pd.read_csv('{}_ans.csv'.format(tracknum), index_col = 0)
