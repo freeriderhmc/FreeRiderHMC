@@ -22,7 +22,7 @@ def get_angle(input_list):
     return angle
 
 def save_to_csv(index, start, duration, state, framenum):
-    datalist = np.full((start-1,5),np.nan)
+    datalist = np.full((start,5),np.nan)
     datalist = np.append(datalist, state, axis = 0)
     datalist = np.append(datalist, np.full((framenum-start-duration+1, 5), np.nan), axis = 0)
     pd.DataFrame(datalist).to_csv('{}.csv'.format(index))
