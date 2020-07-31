@@ -6,6 +6,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 from tensorflow.keras.models import load_model
 from utils import .
+from model import .
 import matplotlib
 import matplotlib.pyplot as plt
 from sklearn import metrics
@@ -19,6 +20,16 @@ cnt = 5 #
 span = 3 #
 track_num = 2 #
 
+# LSTM Neural Network's internal structure
+n_hidden = 32 # Hidden layer num of features
+n_classes = 3
+learning_rate = 0.01 #
+lambda_loss_amount = 0.0015 #
+training_iters = training_data_count * 300  # Loop 300 times on the dataset
+batch_size = 8 
+display_iter = 1000  # show test set accuracy during training
+
+
 X_train, y_train, X_test, y_test = seperate_data(0, cnt, span) #track num
 for n in range(1, track_num):
     X_train0, y_train0, X_test0, y_test0 = seperate_data(n, cnt, span)
@@ -27,63 +38,25 @@ for n in range(1, track_num):
     X_test =np.append(X_test, X_test0, axis=0)
     y_test =np.append(y_test ,y_test0)
 
-print(len(X_train))
-print(len(y_train))
-print(X_train)
-
-
-'''
-
-model = Sequential()
-# model.add(Embedding(3, 32)) # embedding vector 32 levels
-model.add(LSTM(256, input_shape=(seq_len, 3))) # RNN cell hidden_size 32, SimpleRNN
-model.add(Dense(3, activation='softmax')) #if classify->sigmoid
-
-es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=4)
-mc = ModelCheckpoint('best_model.h5', monitor='val_acc', mode='max', verbose=1, save_best_only=True)
-
-#optimizer rmsprop
-model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['acc'])
-history = model.fit(X_train, y_train, epochs=100, batch_size=64, validation_split=0.2, callbacks=[es, mc])
-
-loaded_model = load_model('best_model.h5')
-print("\n test accuracy: %.4f" % (loaded_model.evaluate(X_test, y_test)[1]))
-
-epochs = range(1, len(history.history['acc']) + 1)
-plt.plot(epochs, history.history['loss'])
-plt.plot(epochs, history.history['val_loss'])
-plt.title('model loss')
-plt.ylabel('loss')
-plt.xlabel('epoch')
-plt.legend(['train', 'val'], loc='upper left')
-plt.show()
-'''
-# Input Data 
 training_data_count = len(X_train)
 test_data_count = len(X_test)
 n_steps = len(X_train[0]) #number of timestamp
 n_input = len(X_train[0][0])  # how many input parameters per timestamp
 
-print(training_data_count)
-print(test_data_count)
-print(n_steps)
-print(n_input)
-
-# LSTM Neural Network's internal structure
-n_hidden = 32 # Hidden layer num of features
-n_classes = 3
-
-
-# Training 
-learning_rate = 0.01 #
-lambda_loss_amount = 0.0015 #
-training_iters = training_data_count * 300  # Loop 300 times on the dataset
-batch_size = 8 
-display_iter = 1000  # show test set accuracy during training
-
 # shape, normalization
 print("(X shape, y shape, every X's mean, every X's standard deviation)")
 print(X_test.shape, y_test.shape, np.mean(X_test), np.std(X_test))
+
+print("number of training data : ", training_data_count)
+print("number of test data : ", test_data_count)
+print("number of cound hard coding : ", cnt, "number of steps : ", n_steps)
+print("number of input : ", n_input)
+
+'''
+epoch = 100
+batchsize = 64
+model(X_train, y_train, cnt, epoch, batchsize, X_test, y_test)
+'''
 
 # Graph input/output
 x = tf.placeholder(tf.float32, [None, n_steps, n_input])
@@ -163,6 +136,7 @@ while step * batch_size <= training_iters:
     step += 1
 
 print("Optimization Done")
+
 
 # Accuracy for test data
 
