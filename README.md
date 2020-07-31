@@ -11,5 +11,6 @@
   
 > Activate 기준 다시보기(현재는 5번 valid하면 activate == 1)
 
+> class를 normal, lane_chng, turn으로 3가지로 나눔.
 
 ## 2020-08-03
