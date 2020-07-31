@@ -5,7 +5,7 @@ from tensorflow.keras.layers import SimpleRNN, Embedding, Dense, LSTM
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 from tensorflow.keras.models import load_model
-import utils
+from utils import .
 import matplotlib
 import matplotlib.pyplot as plt
 from sklearn import metrics
@@ -15,49 +15,24 @@ LABELS = [
     "LANE_CHANGE", 
     "TURN_LEFT"
 ]
+cnt = 5 #
+span = 3 #
+track_num = 2 #
 
-def seperate_data(tracknum, cnt, span):
-    rawdf = pd.read_csv('{}.csv'.format(tracknum), index_col=0)
-    ansdf = pd.read_csv('{}_ans.csv'.format(tracknum), index_col = 0)
-    temp = pd.merge(rawdf, ansdf, left_on="0", left_index = True,right_index = True, how='left').dropna(axis=0)
-    data = []
-    y_data = []
-    for i in range(0, len(temp)-cnt):
-        tmplist = []
-        for j in range(i, cnt):
-            tmplist.append(j)
-        if(temp.iloc[i+cnt+span,5]==0):
-            data.append(temp.iloc[tmplist,[0,1,3]].to_numpy())
-            y_data.append(0)
-        elif(temp.iloc[i+cnt+span,5]==1):
-            data.append(temp.iloc[tmplist,[0,1,3]].to_numpy())
-            y_data.append(1)
-        elif(temp.iloc[i+cnt+span,5]==2):
-            data.append(temp.iloc[tmplist,[0,1,3]].to_numpy())
-            y_data.append(2)
-        else:
-            continue
-    n_train = int(len(data) * 0.8)
-    n_test = int(len(data) - n_train)
-    
-    X_test = data[n_train:]
-    y_test = np.array(y_data[n_train:])
-    X_train = data[:n_train]
-    y_train = np.array(y_data[:n_train])
-    
-    return X_train, y_train, X_test, y_test
+X_train, y_train, X_test, y_test = seperate_data(0, cnt, span) #track num
+for n in range(1, track_num):
+    X_train0, y_train0, X_test0, y_test0 = seperate_data(n, cnt, span)
+    X_train =np.append(X_train, X_train0, axis=0)
+    y_train = np.append(y_train,y_train0)
+    X_test =np.append(X_test, X_test0, axis=0)
+    y_test =np.append(y_test ,y_test0)
 
-'''
-X_train, y_train, X_test, y_test = seperate_data(0, 5, 3)
-print(len(X_train))
-X_train0, y_train0, X_test0, y_test0 = seperate_data(1, 5, 3)
-X_train =np.append(X_train, X_train0, axis=0)
-y_train = np.append(y_train,y_train0)
-X_test =np.append(X_test, X_test0, axis=0)
-y_test =np.append(y_test ,y_test0)
 print(len(X_train))
 print(len(y_train))
 print(X_train)
+
+
+'''
 
 model = Sequential()
 # model.add(Embedding(3, 32)) # embedding vector 32 levels
@@ -124,7 +99,7 @@ biases = {
     'out': tf.Variable(tf.random_normal([n_classes]))
 }
 
-pred = utils.LSTM_RNN(x, weights, biases)
+pred = LSTM_RNN(x, weights, biases)
 
 # Loss, optimizer and evaluation
 l2 = lambda_loss_amount * sum(
@@ -149,8 +124,8 @@ sess.run(init)
 # Perform Training steps with "batch_size" amount of example data at each loop
 step = 1
 while step * batch_size <= training_iters:
-    batch_xs =         utils.extract_batch_size(X_train, step, batch_size)
-    batch_ys = utils.one_hot(extract_batch_size(y_train, step, batch_size))
+    batch_xs =         extract_batch_size(X_train, step, batch_size)
+    batch_ys = one_hot(extract_batch_size(y_train, step, batch_size))
 
     # Fit training using batch data
     _, loss, acc = sess.run(
