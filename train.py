@@ -48,6 +48,17 @@ def seperate_data(tracknum, cnt, span):
     return X_train, y_train, X_test, y_test
 
 '''
+X_train, y_train, X_test, y_test = seperate_data(0, 5, 3)
+print(len(X_train))
+X_train0, y_train0, X_test0, y_test0 = seperate_data(1, 5, 3)
+X_train =np.append(X_train, X_train0, axis=0)
+y_train = np.append(y_train,y_train0)
+X_test =np.append(X_test, X_test0, axis=0)
+y_test =np.append(y_test ,y_test0)
+print(len(X_train))
+print(len(y_train))
+print(X_train)
+
 model = Sequential()
 # model.add(Embedding(3, 32)) # embedding vector 32 levels
 model.add(LSTM(256, input_shape=(seq_len, 3))) # RNN cell hidden_size 32, SimpleRNN
