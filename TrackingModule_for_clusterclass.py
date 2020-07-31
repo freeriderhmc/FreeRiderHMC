@@ -24,6 +24,8 @@ class track:
         self.R = np.array([[0.05, 0, 0],
                            [0, 0.05, 0],
                            [0, 0, 0.5]])
+        self.width_max = 0
+        self.length_max = 0
         self.processed = 0
         self.kappa = 0
         self.alpha = 0.3
@@ -32,8 +34,8 @@ class track:
         self.Start = frame_num
         self.Activated = 0
         self.DelCnt = 0
-        self.history_state = np.empty([0,5])
-        self.history_box = np.empty([0,3])
+        #self.history_state = np.empty([0,5])
+        #self.history_box = np.empty([0,3])
         self.dead_flag = 0        
 
 
@@ -136,7 +138,7 @@ class track:
                                         [-mt.sin(self.state[3]), mt.cos(self.state[3])]])
                 z_meas_rot = Rot_inverse @ z_meas_trans
                 
-                if -self.box[0]/2 < z_meas_rot[0] < self.box[0]/2 and -self.box[1]/2 < z_meas_rot[1] < self.box[1]/2:
+                if -self.width_max/2 < z_meas_rot[0] < self.width_max/2 and -self.length_max/2 < z_meas_rot[1] < self.length_max/2:
                     self.processed = 1
                     clusters[i].processed = 1
                     temp = i
@@ -155,7 +157,7 @@ class track:
                                             [-mt.sin(self.state[3]), mt.cos(self.state[3])]])
                     z_meas_rot = Rot_inverse @ z_meas_trans
                     
-                    if -self.box[0] * 1.5 < z_meas_rot[0] < self.box[0] * 1.5 and -self.box[1] * 1.5 < z_meas_rot[1] < self.box[1] * 1.5:
+                    if -self.width_max * 1 < z_meas_rot[0] < self.width_max * 1 and -self.length_max * 1 < z_meas_rot[1] < self.length_max * 1:
                         self.processed = 1
                         clusters[i].processed = 1
                         temp = i
@@ -174,7 +176,7 @@ class track:
                                         [-mt.sin(self.state[3]), mt.cos(self.state[3])]])
                 z_meas_rot = Rot_inverse @ z_meas_trans
                 
-                if -self.box[0]/2 < z_meas_rot[0] < self.box[0]/2 and -self.box[1]/2 < z_meas_rot[1] < self.box[1]/2:
+                if -self.width_max/2 < z_meas_rot[0] < self.width_max/2 and -self.length_max/2 < z_meas_rot[1] < self.length_max/2:
                     self.processed = 1
                     clusters[i].processed = 1
                     temp = i
@@ -193,7 +195,7 @@ class track:
                                             [-mt.sin(self.state[3]), mt.cos(self.state[3])]])
                     z_meas_rot = Rot_inverse @ z_meas_trans
                     
-                    if -self.box[0] < z_meas_rot[0] < self.box[0] and -self.box[1] < z_meas_rot[1] < self.box[1]:
+                    if -self.width_max * 1 < z_meas_rot[0] < self.width_max * 1 and -self.length_max * 1 < z_meas_rot[1] < self.length_max * 1:
                         self.processed = 1
                         clusters[i].processed = 1
                         temp = i
@@ -216,10 +218,17 @@ class track:
             self.Age += 1
             self.DelCnt = 0
             self.ClusterID = clusters[temp].id
+        
+        # Get max width and length box
+        if self.width_max < self.box[0]:
+            self.width_max = self.box[0]
+
+        if self.length_max < self.box[1]:
+            self.length_max = self.box[1]
 
         # Store History
-        self.history_state = np.append(self.history_state, [self.state], axis = 0)
-        self.history_box = np.append(self.history_box, [self.box], axis = 0)
+        # self.history_state = np.append(self.history_state, [self.state], axis = 0)
+        # self.history_box = np.append(self.history_box, [self.box], axis = 0)
 
     def update_box(self, box_meas):
         self.box = (1 - self.alpha) * self.box + self.alpha * box_meas
