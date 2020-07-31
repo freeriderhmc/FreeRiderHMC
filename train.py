@@ -32,11 +32,11 @@ display_iter = 1000  # show test set accuracy during training
 
 X_train, y_train, X_test, y_test = seperate_data(0, cnt, span) #track num
 for n in range(1, track_num):
-    X_train0, y_train0, X_test0, y_test0 = seperate_data(n, cnt, span)
-    X_train =np.append(X_train, X_train0, axis=0)
-    y_train = np.append(y_train,y_train0)
-    X_test =np.append(X_test, X_test0, axis=0)
-    y_test =np.append(y_test ,y_test0)
+    X_train_tmp, y_train_tmp, X_test_tmp, y_test_tmp = seperate_data(n, cnt, span)
+    X_train =np.append(X_train, X_train_tmp, axis=0)
+    y_train = np.append(y_train,y_train_tmp)
+    X_test =np.append(X_test, X_test_tmp, axis=0)
+    y_test =np.append(y_test ,y_test_tmp)
 
 training_data_count = len(X_train)
 test_data_count = len(X_test)
