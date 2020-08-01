@@ -6,7 +6,8 @@ from matplotlib import pyplot as plt
 
 
 import lineSegmentation as seg
-import sortline as sl
+# import sortline as sl
+
 ############################## Macro ###############################
 pi = 3.141592653589793238
 
@@ -21,6 +22,60 @@ def get_angle(input_list):
 def get_distance(xy1,xy2):
     distance = ((xy1[0]-xy2[0])**2 + (xy1[1]-xy2[1])**2)**0.5
     return distance
+
+def sortline_co(line):
+    length = len(line[:][:,0])
+    linedict = {}
+
+    for i in range(0,length):
+        linedict[line[:][i,0]] = line[:][i,:]
+
+    linedict_sorted = sorted(linedict.items())
+    line_sorted = np.empty([0,2])
+    length = len(linedict_sorted)
+
+    for j in range(0,length):
+        line_sorted = np.append(line_sorted, [linedict_sorted[j][1]],axis = 0)
+
+    return line_sorted
+
+
+def sortline_angle(line, inner_point):
+    length = len(line[:][:,0])
+    linedict = {}
+    linevectors = line - inner_point
+
+    listangle = list(map(get_angle, linevectors))
+    
+    for i in range(0,length):
+        #line1dict[xline1[i]] = [xline1[i],yline1[i]]
+        linedict[listangle[i]] = line[:][i,:]
+    linedict_sorted = sorted(linedict.items())
+
+    listangle = sorted(listangle)
+    
+    line_sorted = np.empty([0,2])
+
+    length = len(linedict_sorted)
+    
+    for j in range(0,length):
+        line_sorted = np.append(line_sorted, [linedict_sorted[j][1]],axis = 0)
+
+    for i in range(0,length-1):
+        theta = abs(listangle[i]-listangle[i+1])
+        if 180 < theta:            
+            move = line_sorted[:i+1]
+            line_sorted = line_sorted[i+1:]
+            line_sorted = np.append(line_sorted,move,axis = 0)
+
+    return line_sorted
+
+
+
+##########################################################################
+############################# Main Function ##############################
+##########################################################################
+
 
 def sort_Car(clusterCloud, z_max, z_min):
 
@@ -66,7 +121,7 @@ def sort_Car(clusterCloud, z_max, z_min):
         line1_fit = line_fitter1.fit(xline1,yline1)
         line1dy = line1_fit.coef_
 
-        line1_sorted = sl.sortline_co(line1_inliers)
+        line1_sorted = sortline_co(line1_inliers)
         len1 = len(line1_inliers[:][:,0])
         x1, y1 = line1_sorted[0][0], line1_sorted[0][1]
         x2, y2 = line1_sorted[len1-1][0], line1_sorted[len1-1][1]
@@ -115,8 +170,8 @@ def sort_Car(clusterCloud, z_max, z_min):
         line2dy = line2_fit.coef_
         #line2pred = line2_fit.predict(xline2).reshape([len2,1])
 
-        line1_sorted = sl.sortline_angle(line1_inliers,inner_point)
-        line2_sorted = sl.sortline_angle(line2_inliers,inner_point)
+        line1_sorted = sortline_angle(line1_inliers,inner_point)
+        line2_sorted = sortline_angle(line2_inliers,inner_point)
         
         ####################### Get result #########################            
 
