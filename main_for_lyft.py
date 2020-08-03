@@ -14,6 +14,7 @@ from matplotlib import pyplot as plt
 import loadData
 import sortCar_for_clusterClass as socar
 from TrackingModule_for_clusterclass import track
+# from TrackingModule_for_clusterclass2 import track
 from clusterClass import clusterClass
 
 import pandas as pd
@@ -47,8 +48,8 @@ sys.setrecursionlimit(5000)
 
 # Set Car Standard
 carz_min, carz_max = 0, 3
-carx_min, carx_max = 0.7, 7
-cary_min, cary_max = 0.7, 7
+carx_min, carx_max = 0, 7
+cary_min, cary_max = 0, 7
 
 # Set Visualizer and Draw x, y Axis
 # vis = o3d.visualization.Visualizer()
@@ -69,8 +70,8 @@ line_set.colors = o3d.utility.Vector3dVector(colors)
 
 # Load binary data
 # path = "/media/yimju/E/FreeRider/pandaset_0"
-path = "/media/yimju/Samsung_T5/train/10/lidar/"
-path_csv = "/media/yimju/Samsung_T5/train/10/csvdata/"
+path = "/media/yimju/7B22CE2F737C2A58/Lyft_train/10/lidar/"
+path_csv = "/media/yimju/7B22CE2F737C2A58/Lyft_train/10/csvdata/"
 # f = open("./2011_09_26/2011_09_26_drive_0005_sync/velodyne_points/timestamps.txt","r")
 
 
@@ -119,7 +120,10 @@ for files in file_list:
     data = data.reshape(-1,5)
     data = data[:,0:3]
     
-    data = (np.array([[-1,0,0], [0,-1,0], [0,0,1]]) @ data.T).T
+    # Rotate 180 degree
+    # Rotate 185 degree
+    #data = (np.array([[-1, 0, 0], [0,-1,0], [0,0,1]]) @ data.T).T
+    data = (np.array([[math.cos(177*math.pi/180),-math.sin(177*math.pi/180),0], [math.sin(177*math.pi/180),math.cos(177*math.pi/180),0], [0,0,1]]) @ data.T).T
 
 
 
@@ -145,10 +149,20 @@ for files in file_list:
     cloud_downsample = cloud_downsample[((cloud_downsample[:, 1] <= 10))]
     cloud_downsample = cloud_downsample[((cloud_downsample[:, 1] >= -10))]
 
+
+    # Plot all points
+    cloud_downsample_plot = (np.array([ [0,-1,0], [1,0,0], [0,0,1]]) @ cloud_downsample.T).T    
+    plt.xlim(-40,40)
+    plt.ylim(-20,60)
+    plt.plot(cloud_downsample_plot[:,0], cloud_downsample_plot[:,1],'ko', markersize = 0.4)
+    plt.text(-40, 20, '{}-th frame'.format(frame_num))
+
+
     # threshold z value cut the road
     # KITTI : -1.3
     # Nuscenes : -1.0
-    cloudoutliers = cloud_downsample[((cloud_downsample[:, 2] >= -1.35))] # -1.56
+    cloudoutliers = cloud_downsample[((cloud_downsample[:, 2] >= -1.2))] # -1.56
+    cloudoutliers = cloudoutliers[((cloudoutliers[:, 2] <= 1.5))] # -1.56
     #cloudoutliers = cloud_downsample
 
     cloud_for_clustering = o3d.geometry.PointCloud()
@@ -172,18 +186,23 @@ for files in file_list:
         # if size of cluster <= 10, then dismiss
         if len(clusterCloud) <= 10: continue
         
+        # plot cluster
+        clusterCloud_plot = (np.array([ [0,-1,0], [1,0,0], [0,0,1]]) @ clusterCloud.T).T    
+        # plt.plot(clusterCloud_plot[:,0], clusterCloud_plot[:,1],'bo', markersize = 0.4)
+
+
         # 2) Find Cars with weak condition
         z_max=z_min=x_max=x_min=y_max=y_min=0
         
         z_max = np.max(clusterCloud[:,2])
         z_min = np.min(clusterCloud[:,2])
-        z_for_slicing = 4/5*z_min + 1/5*z_max
+        z_for_slicing = 6/7*z_min + 1/7*z_max
 
         #if 0.5 > z_for_slicing or z_for_slicing > 1: continue
 
         # slicing by z values
-        clusterCloud = clusterCloud[(clusterCloud[:,2] >= z_for_slicing - 0.08)]#0.15
-        clusterCloud = clusterCloud[(clusterCloud[:,2] <= z_for_slicing + 0.08)]
+        clusterCloud = clusterCloud[(clusterCloud[:,2] >= z_for_slicing - 0.05)]#0.15
+        clusterCloud = clusterCloud[(clusterCloud[:,2] <= z_for_slicing + 0.05)]
         
         # if size of cluster <= 10, then dismiss
         if len(clusterCloud) <= 10: continue
@@ -208,6 +227,9 @@ for files in file_list:
             if(flag == True):
                 cluster = clusterClass(np.array(templist_res), np.array(templist_box), i, 1)
                 clusterClass_list.append(cluster)
+
+                # print(flag)
+                # plt.plot(clusterCloud_plot[:,0], clusterCloud_plot[:,1],'yo', markersize = 0.4)
                 # res = np.append(res, [templist_res], axis = 0)
                 # box = np.append(box, [templist_box], axis = 0)
                 # car_list.append(i)
@@ -259,7 +281,7 @@ for files in file_list:
                     Track_list[i].Activated = 1
                 
                 # deActivate Track
-                if Track_list[i].Activated == 1 and Track_list[i].DelCnt >= 10:
+                if Track_list[i].DelCnt >= 7:
                     Track_list[i].dead_flag = 1
                 
                 '''# Delete Track
@@ -274,12 +296,12 @@ for files in file_list:
             print("Track was deleted")
 
     
-    cloud_downsample_plot = (np.array([ [0,-1,0], [1,0,0], [0,0,1]]) @ cloud_downsample.T).T
-    # Plot all points
-    plt.xlim(-40,40)
-    plt.ylim(-20,60)
-    plt.plot(cloud_downsample_plot[:,0], cloud_downsample_plot[:,1],'ko', markersize = 0.4)
-    plt.text(-40, 20, '{}-th frame'.format(frame_num))
+    # cloud_downsample_plot = (np.array([ [0,-1,0], [1,0,0], [0,0,1]]) @ cloud_downsample.T).T
+    # # Plot all points
+    # plt.xlim(-40,40)
+    # plt.ylim(-20,60)
+    # plt.plot(cloud_downsample_plot[:,0], cloud_downsample_plot[:,1],'ko', markersize = 0.4)
+    # plt.text(-40, 20, '{}-th frame'.format(frame_num))
 
     for i in range(0, len(Track_list)):
         #print(Track_list[i].Activated, Track_list[i].processed)
@@ -290,8 +312,11 @@ for files in file_list:
             if len(temp) == 0:
                 continue
             temp = (np.array([ [0,-1,0], [1,0,0], [0,0,1]]) @ temp.T).T
-            plt.plot(temp[:,0], temp[:,1], 'ro', markersize = 0.4)
-            plt.text(temp[0,0], temp[0,1], 'Track{}'.format(i+1))
+            center = np.array([Track_list[i].state[0], Track_list[i].state[1], 0])
+            center = (np.array([ [0,-1,0], [1,0,0], [0,0,1]]) @ center.T).T
+            #plt.plot(temp[:,0], temp[:,1], 'ro', markersize = 0.4)
+            # plt.plot(center[0], center[1], 'go')
+            plt.text(center[0], center[1], 'Track{}'.format(i+1))
             
             # Plot Track's trace
             #for j in range(0, len(Track_list[i].trace)):
