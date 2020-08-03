@@ -18,11 +18,15 @@
 
 ## 2020-08-03
 
-> kappa 값을 키움
+> 43번째 프레임
 
-> gate 2의 width 값을 바꿈, length 값은 그대로
+  > kappa 값을 키움
+
+  > gate 2의 width 값을 바꿈, length 값은 그대로
 
 > 엉덩이만 나올 때 아직도 놓친다는 문제가 있음
 
 > 106번째 프레임에서 sortCar가 계속 됐다 안됐다 하는 문제가 있음
   - ROI를 연결
+  
+  - clustering에서 z의 span을 줄임
