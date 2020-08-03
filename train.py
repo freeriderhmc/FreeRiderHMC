@@ -14,7 +14,7 @@ from sklearn import metrics
 LABELS = [
     "NORMAL", 
     "LANE_CHANGE", 
-    "TURN_LEFT"
+    "TURN"
 ]
 cnt = 5 #
 span = 3 #
@@ -29,15 +29,26 @@ training_iters = training_data_count * 300  # Loop 300 times on the dataset
 batch_size = 8 
 display_iter = 1000  # show test set accuracy during training
 
+X_train = np.empty((cnt,3))
+X_test = np.empty((cnt,3))
+y_train = np.empty((1,1))
+y_test = np.empty((1,1))
 
-X_train, y_train, X_test, y_test = seperate_data(0, cnt, span) #track num
-for n in range(1, track_num):
-    X_train_tmp, y_train_tmp, X_test_tmp, y_test_tmp = seperate_data(n, cnt, span)
+label_df = pd.read_csv('labeling.csv', index_col = 0)
+for index, row in label_df.iterrows():
+    tracknum = index
+    if(np.isnan(row['start_lnchn'])):
+        lanechng = (0,0,0)
+        turn = (1, row['start_turn'], row['fin_turn'])
+    elif(np.isnan(row['start_turn'])):
+        lanechng = (1, row['start_lnchn'], row['fin_lnchn'])
+        turn = (0,0,0)
+    X_train_tmp, y_train_tmp, X_test_tmp, y_test_tmp = seperate_data(tracknum, cnt, span, lanechng, turn) #track num
     X_train =np.append(X_train, X_train_tmp, axis=0)
     y_train = np.append(y_train,y_train_tmp)
     X_test =np.append(X_test, X_test_tmp, axis=0)
     y_test =np.append(y_test ,y_test_tmp)
-
+    
 training_data_count = len(X_train)
 test_data_count = len(X_test)
 n_steps = len(X_train[0]) #number of timestamp
