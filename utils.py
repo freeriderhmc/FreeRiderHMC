@@ -5,28 +5,33 @@ import numpy as np
 
 
 
-def seperate_data(tracknum, cnt, span):
-    rawdf = pd.read_csv('{}.csv'.format(tracknum), index_col=0)
-    ansdf = pd.read_csv('{}_ans.csv'.format(tracknum), index_col = 0)
-    temp = pd.merge(rawdf, ansdf, left_on="0", left_index = True,right_index = True, how='left').dropna(axis=0)
+def dataProcess(tracknum, cnt, span, lanechng=(0,0,0), turn=(0,0,0)):
+    tmpdf = pd.read_csv('{}.csv'.format(tracknum), index_col = 0)
+    tmpdf["ans"]=0
+    if(lanechng[0]==1):
+        tmpdf.at[lanechng[1]:lanechng[2], 'ans'] = 1
+    elif(turn[0]==1):
+        tmpdf.at[turn[1]:turn_fin[2], 'ans'] = 2
+    tmpdf = tmpdf.dropna(axis=0)
     data = []
     y_data = []
-    for i in range(0, len(temp)-cnt):
+    for i in range(0, len(tmpdf)-cnt):
         tmplist = []
         for j in range(i, cnt):
             tmplist.append(j)
-        if(temp.iloc[i+cnt+span,5]==0):
-            data.append(temp.iloc[tmplist,[0,1,3]].to_numpy())
+        print(tmpdf.iloc[i+cnt+span-1,5])
+        if(tmpdf.iloc[i+cnt+span-1,5]==0):
+            data.append(tmpdf.iloc[tmplist, [0,1,3]].to_numpy())
             y_data.append(0)
-        elif(temp.iloc[i+cnt+span,5]==1):
-            data.append(temp.iloc[tmplist,[0,1,3]].to_numpy())
+        elif(tmpdf.iloc[i+cnt+span-1,5]==1):
+            data.append(tmpdf.iloc[tmplist, [0,1,3]].to_numpy())
             y_data.append(1)
-        elif(temp.iloc[i+cnt+span,5]==2):
-            data.append(temp.iloc[tmplist,[0,1,3]].to_numpy())
+        elif(tmpdf.iloc[i+cnt+span-1,5]==2):
+            data.append(tmpdf.iloc[tmplist, [0,1,3]].to_numpy())
             y_data.append(2)
         else:
             continue
-    n_train = int(len(data) * 0.8)
+    n_train = int(len(data)*0.8)
     n_test = int(len(data) - n_train)
     
     X_test = data[n_train:]
