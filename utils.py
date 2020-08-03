@@ -41,6 +41,19 @@ def dataProcess(tracknum, cnt, span, lanechng=(0,0,0), turn=(0,0,0)):
     
     return X_train, y_train, X_test, y_test
 
+def scailing(x_train, x_test):
+    result = pd.concat([x_train, x_test])
+    result_x = result['0']
+    result_y = result['1']
+    x_mean = result_x.mean()
+    x_std = result_x.std()
+    y_mean = result_y.mean()
+    y_std = result_y.std()
+    result_x = (result_x-x_mean)/x_std
+    result_y = (result_y-y_mean)/y_std
+    res = {'x':result_x, 'y':result_y, 'yaw':result['3'], 'ans':result['ans']}
+    return pd.DataFrame(res)
+
 def LSTM_RNN(_X, _weights, _biases):
 
     # input shape: (batch_size, n_steps, n_input)
