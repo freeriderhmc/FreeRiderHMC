@@ -102,7 +102,7 @@ def sort_Car(clusterCloud, z_max, z_min):
 
     # Line Segmentation to extract two lines
     
-    tmp1 = seg.RansacLine(clusterCloud_2D, 140, 0.1)
+    tmp1 = seg.RansacLine(clusterCloud_2D, 100, 0.1)
     if(tmp1 is not None):
         inliers1_list, outliers1_list = tmp1
     else:
@@ -129,19 +129,22 @@ def sort_Car(clusterCloud, z_max, z_min):
         center = [(x1+x2)/2, (y1+y2)/2]
         yaw = get_angle([1,line1dy])
         dis_temp = ((x1-x2)**2+(y1-y2)**2)**0.5
-
+        flag = True
         w,l = 0
+        print('line1')
 
-        if 1.5 < dis_temp <5:
-            l = dis_temp            
+        if 1 < dis_temp <6:
+            print(flag)
+            l = dis_temp                       
             return [center[0], center[1], yaw], [w, l,h], flag
-        elif  0.8 < dis_temp <2:
+        elif  1 < dis_temp <2.8:
             w = dis_temp
-            return [center[0], center[1], yaw+2/pi], [w, l,h], flag
+            return [center[0], center[1], yaw+pi/2], [w, l,h], flag
+
         else: return None, None, None
 
     else:                 
-        tmp = seg.RansacLine(line1_outliers, 70, 0.2)
+        tmp = seg.RansacLine(line1_outliers, 50, 0.1)
         
         if(tmp is not None):
             inliers2_list, _ = tmp
@@ -220,10 +223,22 @@ def sort_Car(clusterCloud, z_max, z_min):
         ang1 = get_angle([1, line1dy])*180/pi
         ang2 = get_angle([1, line2dy])*180/pi
 
+        line1_sorted_plot = (np.array([ [0,-1], [1,0]]) @ line1_sorted.T).T    
+        line2_sorted_plot = (np.array([ [0,-1], [1,0]]) @ line2_sorted.T).T    
+        center_plot = (np.array([ [0,-1], [1,0]]) @ np.asarray(center).T).T    
+        plt.plot(line1_sorted_plot[:,0],line1_sorted_plot[:,1], 'bo', markersize = 0.8)
+        plt.plot(line2_sorted_plot[:,0],line2_sorted_plot[:,1], 'ro', markersize = 0.8)
+        plt.scatter(center_plot[0],center_plot[1],color ='green')
+
         # if -> Car
         # else -> Not Car but cluster
         #if(62<abs(ang1-ang2)<131.2): flag = True
-        if(50<abs(ang1-ang2)<131.2): flag = True
+        if(50<abs(ang1-ang2)<131.2): 
+            flag = True
+
+
+            
+            #plt.show()      
         else: flag = False
             #return None, None, None
 
