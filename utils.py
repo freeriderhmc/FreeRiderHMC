@@ -3,7 +3,17 @@ tf.disable_v2_behavior()
 import pandas as pd
 import numpy as np
 
-
+def scailing(dataframe):
+    result_x = dataframe['0']
+    result_y = dataframe['1']
+    x_mean = result_x.mean()
+    x_std = result_x.std()
+    y_mean = result_y.mean()
+    y_std = result_y.std()
+    result_x = (result_x-x_mean)/x_std
+    result_y = (result_y-y_mean)/y_std
+    res = pd.DataFrame({'x':result_x, 'y':result_y, 'yaw':dataframe['3'], 'ans':dataframe['ans']})
+    return res
 
 def dataProcess(tracknum, cnt, span, lanechng=(0,0,0), turn=(0,0,0)):
     tmpdf = pd.read_csv('{}.csv'.format(tracknum), index_col = 0)
@@ -11,8 +21,9 @@ def dataProcess(tracknum, cnt, span, lanechng=(0,0,0), turn=(0,0,0)):
     if(lanechng[0]==1):
         tmpdf.at[lanechng[1]:lanechng[2], 'ans'] = 1
     elif(turn[0]==1):
-        tmpdf.at[turn[1]:turn_fin[2], 'ans'] = 2
+        tmpdf.at[turn[1]:turn[2], 'ans'] = 2
     tmpdf = tmpdf.dropna(axis=0)
+    tmpdf = scailing(tmpdf)
     data = []
     y_data = []
     for i in range(0, len(tmpdf)-cnt):
@@ -40,19 +51,6 @@ def dataProcess(tracknum, cnt, span, lanechng=(0,0,0), turn=(0,0,0)):
     y_train = np.array(y_data[:n_train])
     
     return X_train, y_train, X_test, y_test
-
-def scailing(x_train, x_test):
-    result = pd.concat([x_train, x_test])
-    result_x = result['0']
-    result_y = result['1']
-    x_mean = result_x.mean()
-    x_std = result_x.std()
-    y_mean = result_y.mean()
-    y_std = result_y.std()
-    result_x = (result_x-x_mean)/x_std
-    result_y = (result_y-y_mean)/y_std
-    res = {'x':result_x, 'y':result_y, 'yaw':result['3'], 'ans':result['ans']}
-    return pd.DataFrame(res)
 
 def LSTM_RNN(_X, _weights, _biases):
 
