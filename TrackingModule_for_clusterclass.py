@@ -22,11 +22,10 @@ class track:
                            [0, 0, 1, 0, 0],
                            [0, 0, 0, 0.2, 0],
                            [0, 0, 0, 0, 1]])
-        self.R = np.array([[0.01, 0, 0, 0, 0],
-                           [0, 0.01, 0, 0, 0],
-                           [0, 0, 0.2, 0, 0],
-                           [0, 0, 0, 0.1, 0],
-                           [0, 0, 0, 0, 0.3]])
+        self.R = np.array([[0.01, 0, 0, 0],
+                           [0, 0.01, 0, 0],
+                           [0, 0, 0.2, 0],
+                           [0, 0, 0, 0.1]])
         self.width_max = 2
         self.length_max = 4
         self.processed = 0
@@ -111,11 +110,15 @@ class track:
         return Xi_pred
 
     def hx(self,Xi):
+        # B = np.array([[1,0,0,0,0],
+        #               [0,1,0,0,0],
+        #               [0,0,1,0,0],
+        #               [0,0,0,1,0],
+        #               [0,0,0,0,1]])
         B = np.array([[1,0,0,0,0],
                       [0,1,0,0,0],
                       [0,0,1,0,0],
-                      [0,0,0,1,0],
-                      [0,0,0,0,1]])
+                      [0,0,0,1,0]])
         return B @ Xi
 
     #def unscented_kalman_filter(self, z_meas, box_meas, car_list, z_processed, dt):
@@ -128,8 +131,8 @@ class track:
         fXi = self.fx(Xi, dt)
         x_pred, P_x = self.UT(fXi, W, self.Q)
         
-        x_pred_plot = (np.array([ [0,-1], [1,0]]) @ x_pred[:2].T).T
-        plt.plot(x_pred_plot[0], x_pred_plot[1], 'mo')
+        # x_pred_plot = (np.array([ [0,-1], [1,0]]) @ x_pred[:2].T).T
+        # plt.plot(x_pred_plot[0], x_pred_plot[1], 'mo')
         # (3) Data Association
         ##### 1) Activated == 0 : Use only (car_flag == 0) cluster
         if self.Activated == 0:
@@ -230,21 +233,32 @@ class track:
             K = Pxz @ inv(P_z)
 
             # Validation Check : Yaw angle
+            #heading_angle = 
             measured_state = clusters[temp].res
-            if mt.pi/3 <= mt.fabs(measured_state[2] - self.state[3]) < 5*mt.pi/6:
+            print("measured angle:", measured_state[2])
+            if mt.pi/3 <= mt.fabs(measured_state[2] - self.state[3]) < 3*mt.pi/4:
                 if self.state[3] >= 0:
                     measured_state[2] += mt.pi/2
                 elif self.state[3] < 0:
                     measured_state[2] -= mt.pi/2
             
-            if mt.fabs(measured_state[2] - self.state[3]) >= 5*mt.pi/6:
+            if mt.fabs(measured_state[2] - self.state[3]) >= 3*mt.pi/4:
                 if self.state[3] >= 0:
                     measured_state[2] -= mt.pi
                 elif self.state[3] < 0:
                     measured_state[2] += mt.pi
+            
+            '''if measured_state[2] > mt.pi/2:
+                measured_state[2] -= mt.pi
+            elif measured_state[2] < -mt.pi/2:
+                measured_state[2] += mt.pi'''
+            
+            if measured_state[2] > mt.pi/2 or measured_state[2] < -mt.pi/2:
+                print("check")
+                measured_state[2] = self.state[3]
 
             measured_state = np.insert(measured_state, 2, (self.state[0]-measured_state[0])/mt.fabs(self.state[0]-measured_state[0])*mt.sqrt((self.state[0] - measured_state[0])**2 + (self.state[1] - measured_state[1])**2)/dt)
-            measured_state = np.insert(measured_state, 4, (measured_state[2] - self.state[3])/dt)
+            #measured_state = np.insert(measured_state, 4, (measured_state[2] - self.state[3])/dt)
 
             self.state = x_pred + K @ (measured_state - z_pred)
             self.P = P_x - K @ P_z @ K.T
