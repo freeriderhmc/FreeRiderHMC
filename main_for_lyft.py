@@ -8,12 +8,15 @@ import numpy as np
 import open3d as o3d
 import time
 import math
+from math import cos, sin, pi
 import operator
 from matplotlib import pyplot as plt
 
 import loadData
-import sortCar_for_clusterClass as socar
+# import sortCar_for_clusterClass as socar
+import sortCar_getresult as socar
 from TrackingModule_for_clusterclass import track
+# from TrackingModule_for_clusterclass2 import track
 from clusterClass import clusterClass
 
 import pandas as pd
@@ -47,8 +50,8 @@ sys.setrecursionlimit(5000)
 
 # Set Car Standard
 carz_min, carz_max = 0, 3
-carx_min, carx_max = 0.7, 7
-cary_min, cary_max = 0.7, 7
+carx_min, carx_max = 0, 7
+cary_min, cary_max = 0, 7
 
 # Set Visualizer and Draw x, y Axis
 # vis = o3d.visualization.Visualizer()
@@ -69,8 +72,8 @@ line_set.colors = o3d.utility.Vector3dVector(colors)
 
 # Load binary data
 # path = "/media/yimju/E/FreeRider/pandaset_0"
-path = "/media/yimju/Samsung_T5/train/10/lidar/"
-path_csv = "/media/yimju/Samsung_T5/train/10/csvdata/"
+path = "/media/yimju/7B22CE2F737C2A58/Lyft_train/26/lidar/"
+path_csv = "/media/yimju/7B22CE2F737C2A58/Lyft_train/26/csvdata/"
 # f = open("./2011_09_26/2011_09_26_drive_0005_sync/velodyne_points/timestamps.txt","r")
 
 
@@ -119,36 +122,44 @@ for files in file_list:
     data = data.reshape(-1,5)
     data = data[:,0:3]
     
-    data = (np.array([[-1,0,0], [0,-1,0], [0,0,1]]) @ data.T).T
+    # Rotate 180 degree
+    # Rotate 185 degree
+    #data = (np.array([[-1, 0, 0], [0,-1,0], [0,0,1]]) @ data.T).T
+    data = (np.array([[math.cos(177*math.pi/180),-math.sin(177*math.pi/180),0], [math.sin(177*math.pi/180),math.cos(177*math.pi/180),0], [0,0,1]]) @ data.T).T
 
+   # Convert pcd to numpy array
+    cloud_downsample = data
+
+    # Crop Pointcloud -20m < x < 20m && -20m < y < 20m && z > -1.80m
+    cloud_downsample = cloud_downsample[((cloud_downsample[:, 0] <= 60))]
+    cloud_downsample = cloud_downsample[((cloud_downsample[:, 0] >= -30))]
+    cloud_downsample = cloud_downsample[((cloud_downsample[:, 1] <= 20))]
+    cloud_downsample = cloud_downsample[((cloud_downsample[:, 1] >= -20))]
 
 
     # Convert numpy into pointcloud 
     cloud = o3d.geometry.PointCloud()
-    cloud.points = o3d.utility.Vector3dVector(data)
+    cloud.points = o3d.utility.Vector3dVector(cloud_downsample)
+    
 
     # Downsampling pointcloud
     cloud_downsample = cloud.voxel_down_sample(voxel_size=0.05)
-    #cloud_downsample = cloud
-
-    #print(cloud_downsample.segment_plane(0.4,300,300)[1])
-    #outerBox = [[20,-10,-1.8],[20,-10,-1.8]]
-    #cloud_downsample.crop()
-
-
-    # Convert pcd to numpy array
     cloud_downsample = np.asarray(cloud_downsample.points)
 
-    # Crop Pointcloud -20m < x < 20m && -20m < y < 20m && z > -1.80m
-    cloud_downsample = cloud_downsample[((cloud_downsample[:, 0] <= 60))]
-    cloud_downsample = cloud_downsample[((cloud_downsample[:, 0] >= -20))]
-    cloud_downsample = cloud_downsample[((cloud_downsample[:, 1] <= 10))]
-    cloud_downsample = cloud_downsample[((cloud_downsample[:, 1] >= -10))]
+
+    # Plot all points
+    cloud_downsample_plot = (np.array([ [0,-1,0], [1,0,0], [0,0,1]]) @ cloud_downsample.T).T    
+    plt.xlim(-40,40)
+    plt.ylim(-20,60)
+    plt.plot(cloud_downsample_plot[:,0], cloud_downsample_plot[:,1],'ko', markersize = 0.4)
+    plt.text(-40, 20, '{}-th frame'.format(frame_num))
+
 
     # threshold z value cut the road
     # KITTI : -1.3
     # Nuscenes : -1.0
-    cloudoutliers = cloud_downsample[((cloud_downsample[:, 2] >= -1.35))] # -1.56
+    cloudoutliers = cloud_downsample[((cloud_downsample[:, 2] >= -1.2))] # 0.3
+    cloudoutliers = cloudoutliers[((cloudoutliers[:, 2] <= 1))] # 2.5
     #cloudoutliers = cloud_downsample
 
     cloud_for_clustering = o3d.geometry.PointCloud()
@@ -163,7 +174,6 @@ for files in file_list:
 
     # Visualize Clusters
     for i in range(np.max(labels)):
-
         # Find the Cars
         # 1) Extract each cluster
         DBSCAN_Result = cloud_for_clustering.select_by_index(np.where(labels == i)[0])
@@ -172,18 +182,22 @@ for files in file_list:
         # if size of cluster <= 10, then dismiss
         if len(clusterCloud) <= 10: continue
         
+        # plot cluster
+        clusterCloud_plot = (np.array([ [0,-1,0], [1,0,0], [0,0,1]]) @ clusterCloud.T).T    
+        # plt.plot(clusterCloud_plot[:,0], clusterCloud_plot[:,1],'bo', markersize = 0.4)
+
         # 2) Find Cars with weak condition
         z_max=z_min=x_max=x_min=y_max=y_min=0
         
         z_max = np.max(clusterCloud[:,2])
         z_min = np.min(clusterCloud[:,2])
-        z_for_slicing = 4/5*z_min + 1/5*z_max
+        z_for_slicing = 6/7*z_min + 1/7*z_max
 
         #if 0.5 > z_for_slicing or z_for_slicing > 1: continue
 
         # slicing by z values
-        clusterCloud = clusterCloud[(clusterCloud[:,2] >= z_for_slicing - 0.08)]#0.15
-        clusterCloud = clusterCloud[(clusterCloud[:,2] <= z_for_slicing + 0.08)]
+        clusterCloud = clusterCloud[(clusterCloud[:,2] >= z_for_slicing - 0.1)]#0.15
+        clusterCloud = clusterCloud[(clusterCloud[:,2] <= z_for_slicing + 0.1)]
         
         # if size of cluster <= 10, then dismiss
         if len(clusterCloud) <= 10: continue
@@ -208,6 +222,9 @@ for files in file_list:
             if(flag == True):
                 cluster = clusterClass(np.array(templist_res), np.array(templist_box), i, 1)
                 clusterClass_list.append(cluster)
+
+                # print(flag)
+                # plt.plot(clusterCloud_plot[:,0], clusterCloud_plot[:,1],'yo', markersize = 0.4)
                 # res = np.append(res, [templist_res], axis = 0)
                 # box = np.append(box, [templist_box], axis = 0)
                 # car_list.append(i)
@@ -259,7 +276,7 @@ for files in file_list:
                     Track_list[i].Activated = 1
                 
                 # deActivate Track
-                if Track_list[i].Activated == 1 and Track_list[i].DelCnt >= 10:
+                if Track_list[i].DelCnt >= 5:
                     Track_list[i].dead_flag = 1
                 
                 '''# Delete Track
@@ -274,12 +291,12 @@ for files in file_list:
             print("Track was deleted")
 
     
-    cloud_downsample_plot = (np.array([ [0,-1,0], [1,0,0], [0,0,1]]) @ cloud_downsample.T).T
-    # Plot all points
-    plt.xlim(-40,40)
-    plt.ylim(-20,60)
-    plt.plot(cloud_downsample_plot[:,0], cloud_downsample_plot[:,1],'ko', markersize = 0.4)
-    plt.text(-40, 20, '{}-th frame'.format(frame_num))
+    # cloud_downsample_plot = (np.array([ [0,-1,0], [1,0,0], [0,0,1]]) @ cloud_downsample.T).T
+    # # Plot all points
+    # plt.xlim(-40,40)
+    # plt.ylim(-20,60)
+    # plt.plot(cloud_downsample_plot[:,0], cloud_downsample_plot[:,1],'ko', markersize = 0.4)
+    # plt.text(-40, 20, '{}-th frame'.format(frame_num))
 
     for i in range(0, len(Track_list)):
         #print(Track_list[i].Activated, Track_list[i].processed)
@@ -290,8 +307,15 @@ for files in file_list:
             if len(temp) == 0:
                 continue
             temp = (np.array([ [0,-1,0], [1,0,0], [0,0,1]]) @ temp.T).T
-            plt.plot(temp[:,0], temp[:,1], 'ro', markersize = 0.4)
-            plt.text(temp[0,0], temp[0,1], 'Track{}'.format(i+1))
+            center = np.array([Track_list[i].state[0], Track_list[i].state[1], 0])
+            center = (np.array([ [0,-1,0], [1,0,0], [0,0,1]]) @ center.T).T
+            # plt.plot(temp[:,0], temp[:,1], 'ro', markersize = 0.4)
+            # plt.plot(center[0], center[1], 'go')
+            # x, y, u, v = Track_list[i].state[0], Track_list[i].state[1], cos(Track_list[i].state[3]), sin(Track_list[i].state[3])
+            # [x,y] = (np.array([ [0,-1], [1,0]]) @ np.asarray([x,y]).T).T 
+            # [u,v] = (np.array([ [0,-1], [1,0]]) @ np.asarray([u,v]).T).T 
+            # plt.quiver(x, y, u, v, scale= 2, scale_units = 'inches', color = 'red')
+            plt.text(center[0], center[1], 'Track{}'.format(i+1))
             
             # Plot Track's trace
             #for j in range(0, len(Track_list[i].trace)):
@@ -327,17 +351,17 @@ for files in file_list:
 
 for i in range(0, len(Track_list)):
     if Track_list[i].Activated == 1:
-        Track_list_valid.append(Track_list[i])
+        Track_list_valid.append((Track_list[i],i+1))
 
 validtracklistnum =len(Track_list_valid)
 print("# of all track_list : ", len(Track_list))
 print("# of valid track_list : ", validtracklistnum)
 
 for i in range(validtracklistnum):
-    index = i+1
-    start = Track_list_valid[i].Start
-    duration = len(Track_list_valid[i].history_state)
-    state = Track_list_valid[i].history_state
+    index = Track_list_valid[i][1]
+    start = Track_list_valid[i][0].Start
+    duration = len(Track_list_valid[i][0].history_state)
+    state = Track_list_valid[i][0].history_state
     framenum = frame_num
     save_to_csv(index, start, duration, state, framenum, path)
     
