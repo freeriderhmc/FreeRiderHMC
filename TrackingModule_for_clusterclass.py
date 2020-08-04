@@ -3,12 +3,13 @@ import numpy as np
 from numpy.linalg import inv, cholesky
 import math as mt
 from clusterClass import clusterClass
+from matplotlib import pyplot as plt
 
 class track:
     # Initialization
     def __init__(self, cluster, frame_num, id):
         self.state = cluster.res
-        self.state = np.insert(self.state,2,1)
+        self.state = np.insert(self.state,2,0.5)
         self.state = np.insert(self.state,4,0.1)
         self.box = cluster.box
         self.P = np.array([[0.3, 0, 0, 0, 0],
@@ -16,16 +17,18 @@ class track:
                            [0, 0, 1, 0, 0],
                            [0, 0, 0, 0.3, 0],
                            [0, 0, 0, 0, 1]])
-        self.Q = np.array([[0.1, 0, 0, 0, 0],
-                           [0, 0.1, 0, 0, 0],
+        self.Q = np.array([[0.2, 0, 0, 0, 0],
+                           [0, 0.2, 0, 0, 0],
                            [0, 0, 1, 0, 0],
-                           [0, 0, 0, 0.1, 0],
+                           [0, 0, 0, 0.2, 0],
                            [0, 0, 0, 0, 1]])
-        self.R = np.array([[0.05, 0, 0],
-                           [0, 0.05, 0],
-                           [0, 0, 0.5]])
-        self.width_max = 0
-        self.length_max = 0
+        self.R = np.array([[0.01, 0, 0, 0, 0],
+                           [0, 0.01, 0, 0, 0],
+                           [0, 0, 0.2, 0, 0],
+                           [0, 0, 0, 0.1, 0],
+                           [0, 0, 0, 0, 0.3]])
+        self.width_max = 2
+        self.length_max = 4
         self.processed = 0
         self.kappa = 0
         self.alpha = 0.3
@@ -34,8 +37,8 @@ class track:
         self.Start = frame_num
         self.Activated = 0
         self.DelCnt = 0
-        #self.history_state = np.empty([0,5])
-        #self.history_box = np.empty([0,3])
+        self.history_state = np.empty([0,5])
+        self.history_box = np.empty([0,3])
         self.dead_flag = 0        
 
 
@@ -45,7 +48,7 @@ class track:
         n = len(self.state)
         Xi = np.zeros((n, 2*n+1))
         W = np.zeros(2*n+1)
-        self.kappa=3
+        self.kappa=20
         Xi[:, 0] = self.state
         W[0] = self.kappa / (n + self.kappa)
         
@@ -110,7 +113,9 @@ class track:
     def hx(self,Xi):
         B = np.array([[1,0,0,0,0],
                       [0,1,0,0,0],
-                      [0,0,0,1,0]])
+                      [0,0,1,0,0],
+                      [0,0,0,1,0],
+                      [0,0,0,0,1]])
         return B @ Xi
 
     #def unscented_kalman_filter(self, z_meas, box_meas, car_list, z_processed, dt):
@@ -123,6 +128,8 @@ class track:
         fXi = self.fx(Xi, dt)
         x_pred, P_x = self.UT(fXi, W, self.Q)
         
+        x_pred_plot = (np.array([ [0,-1], [1,0]]) @ x_pred[:2].T).T
+        plt.plot(x_pred_plot[0], x_pred_plot[1], 'mo')
         # (3) Data Association
         ##### 1) Activated == 0 : Use only (car_flag == 0) cluster
         if self.Activated == 0:
@@ -134,11 +141,13 @@ class track:
                 z_meas_trans = np.array([0,0])
                 z_meas_trans[0] = clusters[i].res[0] - x_pred[0]
                 z_meas_trans[1] = clusters[i].res[1] - x_pred[1]
+                # z_meas_trans[0] = clusters[i].res[0] - self.state[0]
+                # z_meas_trans[1] = clusters[i].res[1] - self.state[1]
                 Rot_inverse = np.array([[mt.cos(self.state[3]), mt.sin(self.state[3])],
                                         [-mt.sin(self.state[3]), mt.cos(self.state[3])]])
                 z_meas_rot = Rot_inverse @ z_meas_trans
                 
-                if -self.width_max/2 < z_meas_rot[0] < self.width_max/2 and -self.length_max/2 < z_meas_rot[1] < self.length_max/2:
+                if -self.width_max * 0.5 <= z_meas_rot[0] <= self.width_max * 0.5 and -self.length_max * 0.5 <= z_meas_rot[1] <= self.length_max * 0.5:
                     self.processed = 1
                     clusters[i].processed = 1
                     temp = i
@@ -153,11 +162,13 @@ class track:
                     z_meas_trans = np.array([0,0])
                     z_meas_trans[0] = clusters[i].res[0] - x_pred[0]
                     z_meas_trans[1] = clusters[i].res[1] - x_pred[1]
+                    # z_meas_trans[0] = clusters[i].res[0] - self.state[0]
+                    # z_meas_trans[1] = clusters[i].res[1] - self.state[1]
                     Rot_inverse = np.array([[mt.cos(self.state[3]), mt.sin(self.state[3])],
                                             [-mt.sin(self.state[3]), mt.cos(self.state[3])]])
                     z_meas_rot = Rot_inverse @ z_meas_trans
                     
-                    if -self.width_max * 1 < z_meas_rot[0] < self.width_max * 1 and -self.length_max * 1 < z_meas_rot[1] < self.length_max * 1:
+                    if -self.width_max * 0.8 <= z_meas_rot[0] <= self.width_max * 0.8 and -self.length_max * 1.0 <= z_meas_rot[1] <= self.length_max * 1.0:
                         self.processed = 1
                         clusters[i].processed = 1
                         temp = i
@@ -172,11 +183,13 @@ class track:
                 z_meas_trans = np.array([0,0])
                 z_meas_trans[0] = clusters[i].res[0] - x_pred[0]
                 z_meas_trans[1] = clusters[i].res[1] - x_pred[1]
+                # z_meas_trans[0] = clusters[i].res[0] - self.state[0]
+                # z_meas_trans[1] = clusters[i].res[1] - self.state[1]
                 Rot_inverse = np.array([[mt.cos(self.state[3]), mt.sin(self.state[3])],
                                         [-mt.sin(self.state[3]), mt.cos(self.state[3])]])
                 z_meas_rot = Rot_inverse @ z_meas_trans
                 
-                if -self.width_max/2 < z_meas_rot[0] < self.width_max/2 and -self.length_max/2 < z_meas_rot[1] < self.length_max/2:
+                if -self.width_max * 0.5 <= z_meas_rot[0] <= self.width_max * 0.5 and -self.length_max * 0.5 <= z_meas_rot[1] <= self.length_max * 0.5:
                     self.processed = 1
                     clusters[i].processed = 1
                     temp = i
@@ -191,16 +204,19 @@ class track:
                     z_meas_trans = np.array([0,0])
                     z_meas_trans[0] = clusters[i].res[0] - x_pred[0]
                     z_meas_trans[1] = clusters[i].res[1] - x_pred[1]
+                    # z_meas_trans[0] = clusters[i].res[0] - self.state[0]
+                    # z_meas_trans[1] = clusters[i].res[1] - self.state[1]
                     Rot_inverse = np.array([[mt.cos(self.state[3]), mt.sin(self.state[3])],
                                             [-mt.sin(self.state[3]), mt.cos(self.state[3])]])
                     z_meas_rot = Rot_inverse @ z_meas_trans
                     
-                    if -self.width_max * 1 < z_meas_rot[0] < self.width_max * 1 and -self.length_max * 1 < z_meas_rot[1] < self.length_max * 1:
+                    if -self.width_max * 0.8 <= z_meas_rot[0] <= self.width_max * 0.8 and -self.length_max * 1.0 <= z_meas_rot[1] <= self.length_max * 1.0:
                         self.processed = 1
                         clusters[i].processed = 1
                         temp = i
                         break
 
+        # (4) Measurement Update
         if temp == -1:
             self.state = x_pred
             self.P = P_x
@@ -209,28 +225,44 @@ class track:
             hXi = self.hx(fXi)
             z_pred, P_z = self.UT(hXi, W, self.R)
 
-            # (5) Calculate Off Diagonal Elements of Error Covariance and Kalman Gain.
+            # Calculate Off Diagonal Elements of Error Covariance and Kalman Gain.
             Pxz = W * (fXi - x_pred.reshape(-1, 1)) @ (hXi - z_pred.reshape(-1, 1)).T
             K = Pxz @ inv(P_z)
-            self.state = x_pred + K @ (clusters[temp].res - z_pred)
+
+            # Validation Check : Yaw angle
+            measured_state = clusters[temp].res
+            if mt.pi/3 <= mt.fabs(measured_state[2] - self.state[3]) < 5*mt.pi/6:
+                if self.state[3] >= 0:
+                    measured_state[2] += mt.pi/2
+                elif self.state[3] < 0:
+                    measured_state[2] -= mt.pi/2
+            
+            if mt.fabs(measured_state[2] - self.state[3]) >= 5*mt.pi/6:
+                if self.state[3] >= 0:
+                    measured_state[2] -= mt.pi
+                elif self.state[3] < 0:
+                    measured_state[2] += mt.pi
+
+            measured_state = np.insert(measured_state, 2, (self.state[0]-measured_state[0])/mt.fabs(self.state[0]-measured_state[0])*mt.sqrt((self.state[0] - measured_state[0])**2 + (self.state[1] - measured_state[1])**2)/dt)
+            measured_state = np.insert(measured_state, 4, (measured_state[2] - self.state[3])/dt)
+
+            self.state = x_pred + K @ (measured_state - z_pred)
             self.P = P_x - K @ P_z @ K.T
             self.update_box(clusters[temp].box)
             self.Age += 1
             self.DelCnt = 0
             self.ClusterID = clusters[temp].id
         
-        # Get max width and length box
+        # (5) Get max width and length box
         if self.width_max < self.box[0]:
             self.width_max = self.box[0]
 
         if self.length_max < self.box[1]:
             self.length_max = self.box[1]
 
-        # Store History
-        # self.history_state = np.append(self.history_state, [self.state], axis = 0)
-        # self.history_box = np.append(self.history_box, [self.box], axis = 0)
+        # (6) Store History
+        self.history_state = np.append(self.history_state, [self.state], axis = 0)
+        self.history_box = np.append(self.history_box, [self.box], axis = 0)
 
     def update_box(self, box_meas):
         self.box = (1 - self.alpha) * self.box + self.alpha * box_meas
-
-            
