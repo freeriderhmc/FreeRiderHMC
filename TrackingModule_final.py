@@ -211,7 +211,7 @@ class track:
                 print("check")
                 measured_state[2] = self.state[3]
 
-            measured_state = np.insert(measured_state, 2, (self.state[0]-measured_state[0])/mt.fabs(self.state[0]-measured_state[0])*mt.sqrt((self.state[0] - measured_state[0])**2 + (self.state[1] - measured_state[1])**2)/dt)
+            measured_state = np.insert(measured_state, 2, (measured_state[0] - self.state[0])/mt.fabs(measured_state[0] - self.state[0])*mt.sqrt((self.state[0] - measured_state[0])**2 + (self.state[1] - measured_state[1])**2)/dt)
             #measured_state = np.insert(measured_state, 4, (measured_state[2] - self.state[3])/dt)
 
             self.state = x_pred + K @ (measured_state - z_pred)
