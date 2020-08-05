@@ -11,9 +11,10 @@ import loadData
 import sortCar_yimju as socar
 from TrackingModule_final import track
 # from TrackingModule_for_clusterclass2 import track
-from clusterClass import clusterClass
+#from clusterClass import clusterClass
 
 import pandas as pd
+import cv2
 
 def save_to_csv(index, start, duration, state, framenum, path_csv):
     datalist = np.full((start,5),np.nan)
@@ -26,20 +27,22 @@ Track_list = []
 Track_list_valid = []
 frame_num = 0
 
-
-plt.figure()
 plt.ion()
-plt.show()
+plt.figure()
 
+path = "/media/jinyoung/Samsung_T5/Lyft_test/38/"
+path_lidar = path + "lidar/"
+path_csv = path + "csvdata/"
+path_image = path + "images/"
 
-path = "/media/jinwj1996/Samsung_T5/Lyft_train/10/lidar/"
-path_csv = "/media/jinwj1996/Samsung_T5/Lyft_train/10/csvdata/"
+file_list = loadData.load_data(path_lidar)
+image_list = loadData.load_data(path_image)
 
-file_list = loadData.load_data(path)
+cv2.namedWindow('Show Image')
 
 for files in file_list:
     
-    clusterClass_list = [] 
+    #clusterClass_list = [] 
     measured_centroid = np.empty([0,3])
     measured_box = np.empty([0,3])
     cluster_id = []
@@ -47,17 +50,30 @@ for files in file_list:
     
     dt = 0.2
 
-    data = np.fromfile(path+files,dtype = np.float32)
+
+    img = cv2.imread(path_image + image_list[frame_num], cv2.IMREAD_COLOR)
+
+
+    cv2.imshow("Show Image", img)
+    cv2.waitKey(1)
+
+    data = np.fromfile(path_lidar+files,dtype = np.float32)
     data = data.reshape(-1,5)
     data = data[:,0:3]
     data = (np.array([[math.cos(177*math.pi/180),-math.sin(177*math.pi/180),0], [math.sin(177*math.pi/180),math.cos(177*math.pi/180),0], [0,0,1]]) @ data.T).T
 
-    data = data[(data[:,0] <= 60)]
-    data = data[(data[:,0] >= -20)]
-    data = data[(data[:,1] <= 20)]
-    data = data[(data[:,1] >= -20)]
+    data = data[(data[:,0] <= 50)]
+    data = data[(data[:,0] >= -10)]
+    data = data[(data[:,1] <= 15)]
+    data = data[(data[:,1] >= -15)]
 
-    data = data[((data[:, 2] >= -1.2))] # -1.56
+    data_plot = (np.array([ [0,-1,0], [1,0,0], [0,0,1]]) @ data.T).T    
+    plt.plot(data_plot[:,0], data_plot[:,1],'ko', markersize = 0.3)
+    plt.xlim(-30,30)
+    plt.ylim(-10,50)
+    plt.text(-30, 20, '{}-th frame'.format(frame_num))
+
+    data = data[((data[:, 2] >= -1.3))] # -1.56
     data = data[((data[:, 2] <= 1.5))] # -1.56
 
     cloud = o3d.geometry.PointCloud()
@@ -65,12 +81,12 @@ for files in file_list:
 
     cloud_downsample = cloud.voxel_down_sample(voxel_size=0.05)
 
-    cloud_downsample_plot = np.asarray(cloud_downsample.points)
-    cloud_downsample_plot = (np.array([ [0,-1,0], [1,0,0], [0,0,1]]) @ cloud_downsample_plot.T).T    
-    plt.plot(cloud_downsample_plot[:,0], cloud_downsample_plot[:,1],'ko', markersize = 0.4)
-    plt.xlim(-40,40)
-    plt.ylim(-20,60)
-    plt.text(-40, 20, '{}-th frame'.format(frame_num))
+    # cloud_downsample_plot = np.asarray(cloud_downsample.points)
+    # cloud_downsample_plot = (np.array([ [0,-1,0], [1,0,0], [0,0,1]]) @ cloud_downsample_plot.T).T    
+    # plt.plot(cloud_downsample_plot[:,0], cloud_downsample_plot[:,1],'ko', markersize = 0.4)
+    # plt.xlim(-40,40)
+    # plt.ylim(-20,60)
+    # plt.text(-40, 20, '{}-th frame'.format(frame_num))
 
     labels = np.asanyarray(cloud_downsample.cluster_dbscan(0.7,3))
 
@@ -226,8 +242,8 @@ for files in file_list:
             if len(temp) == 0:
                 continue
 
-            plt.xlim(-40,40)
-            plt.ylim(-20,60)
+            plt.xlim(-30,30)
+            plt.ylim(-10,50)
             temp = (np.array([ [0,-1,0], [1,0,0], [0,0,1]]) @ temp.T).T
             center = np.array([Track_list[i].state[0], Track_list[i].state[1]])
             center = (np.array([[0,-1], [1,0]]) @ center.T).T
@@ -308,7 +324,3 @@ for i in range(validtracklistnum):
     # plt.plot(range(1,len(Track_list[i].history_state) + 1) , Track_list[i].history_box[:,1], label = 'length', color = 'k')
     # plt.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
     # plt.show()'''
-
-        
-
-    
