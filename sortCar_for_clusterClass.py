@@ -18,6 +18,36 @@ def get_distance(xy1,xy2):
     distance = ((xy1[0]-xy2[0])**2 + (xy1[1]-xy2[1])**2)**0.5
     return distance
 
+def sortline_angle(line, inner_point):
+    length = len(line[:][:,0])
+    linedict = {}
+    linevectors = line - inner_point
+
+    listangle = list(map(get_angle, linevectors))
+    
+    for i in range(0,length):
+        #line1dict[xline1[i]] = [xline1[i],yline1[i]]
+        linedict[listangle[i]] = line[:][i,:]
+    linedict_sorted = sorted(linedict.items())
+
+    listangle = sorted(listangle)
+    
+    line_sorted = np.empty([0,2])
+
+    length = len(linedict_sorted)
+    
+    for j in range(0,length):
+        line_sorted = np.append(line_sorted, [linedict_sorted[j][1]],axis = 0)
+
+    for i in range(0,length-1):
+        theta = abs(listangle[i]-listangle[i+1])
+        if 180 < theta:            
+            move = line_sorted[:i+1]
+            line_sorted = line_sorted[i+1:]
+            line_sorted = np.append(line_sorted,move,axis = 0)
+
+    return line_sorted
+
 def sort_Car(clusterCloud, z_max, z_min):
 
     # Get Centroid
@@ -43,7 +73,7 @@ def sort_Car(clusterCloud, z_max, z_min):
 
     # Line Segmentation to extract two lines
     
-    tmp1 = seg.RansacLine(clusterCloud_2D, 140, 0.1)
+    tmp1 = seg.RansacLine(clusterCloud_2D, 90, 0.1)
     if(tmp1 is not None):
         inliers1_list, outliers1_list = tmp1
     else:
@@ -57,7 +87,7 @@ def sort_Car(clusterCloud, z_max, z_min):
     if(len(line1_outliers)==0):
         return None, None, None
 
-    tmp = seg.RansacLine(line1_outliers, 70, 0.2)
+    tmp = seg.RansacLine(line1_outliers, 45, 0.2)
     
     if(tmp is not None):
         inliers2_list, _ = tmp
@@ -85,7 +115,11 @@ def sort_Car(clusterCloud, z_max, z_min):
     line2dy = line2_fit.coef_
     #line2pred = line2_fit.predict(xline2).reshape([len2,1])
 
-    line1dict = {}
+    line1_sorted = sortline_angle(line1_inliers,inner_point)
+    line2_sorted = sortline_angle(line2_inliers,inner_point)
+        
+
+    '''line1dict = {}
     line2dict = {}
 
     line1vectors = line1_inliers - inner_point
@@ -130,7 +164,7 @@ def sort_Car(clusterCloud, z_max, z_min):
         if 180<theta:                
             move = line2_sorted[:i+1 ]
             line2_sorted = line2_sorted[i+1 :]
-            line2_sorted = np.append(line2_sorted,move,axis = 0)
+            line2_sorted = np.append(line2_sorted,move,axis = 0)'''
 
     ####################### Get result #########################            
     x1, y1 = line1_sorted[0][0], line1_sorted[0][1]

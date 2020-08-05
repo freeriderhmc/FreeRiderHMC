@@ -9,11 +9,17 @@ from matplotlib import pyplot as plt
 
 import loadData
 import sortCar_yimju as socar
-from TrackingModule_for_clusterclass import track
+from TrackingModule_final import track
 # from TrackingModule_for_clusterclass2 import track
 from clusterClass import clusterClass
 
 import pandas as pd
+
+def save_to_csv(index, start, duration, state, framenum, path_csv):
+    datalist = np.full((start,5),np.nan)
+    datalist = np.append(datalist, state, axis = 0)
+    datalist = np.append(datalist, np.full((framenum-start-duration+1, 5), np.nan), axis = 0)
+    pd.DataFrame(datalist).to_csv(path_csv + '{}.csv'.format(index))
 
 # Set Track list
 Track_list = []
@@ -27,11 +33,18 @@ plt.show()
 
 
 path = "/media/jinwj1996/Samsung_T5/Lyft_train/10/lidar/"
+path_csv = "/media/jinwj1996/Samsung_T5/Lyft_train/10/csvdata/"
 
 file_list = loadData.load_data(path)
 
 for files in file_list:
+    
     clusterClass_list = [] 
+    measured_centroid = np.empty([0,3])
+    measured_box = np.empty([0,3])
+    cluster_id = []
+    processed = []
+    
     dt = 0.2
 
     data = np.fromfile(path+files,dtype = np.float32)
@@ -55,6 +68,9 @@ for files in file_list:
     cloud_downsample_plot = np.asarray(cloud_downsample.points)
     cloud_downsample_plot = (np.array([ [0,-1,0], [1,0,0], [0,0,1]]) @ cloud_downsample_plot.T).T    
     plt.plot(cloud_downsample_plot[:,0], cloud_downsample_plot[:,1],'ko', markersize = 0.4)
+    plt.xlim(-40,40)
+    plt.ylim(-20,60)
+    plt.text(-40, 20, '{}-th frame'.format(frame_num))
 
     labels = np.asanyarray(cloud_downsample.cluster_dbscan(0.7,3))
 
@@ -88,7 +104,7 @@ for files in file_list:
 
         box_points = box.get_box_points()
         box_points_numpy = np.asarray(box_points)
-        print(box_points_numpy)
+        #print(box_points_numpy)
         box_points_numpy_plot = (np.array([[0,-1,0], [1,0,0], [0,0,1]]) @ box_points_numpy.T).T 
         #plt.plot(box_points_numpy_plot[:,0], box_points_numpy_plot[:,1], 'go', markersize = 1.5)
         # for i in range(0,8):
@@ -122,31 +138,44 @@ for files in file_list:
         templist_res = [box_center[0], box_center[1], yaw]
         templist_box = [width, length, z_max - z_min]
         
-        if math.fabs(yaw - yaw_norm) >= math.pi/3:
-            cluster = clusterClass(np.array(templist_res), np.array(templist_box), i, 1)
-            clusterClass_list.append(cluster)
-    
-        else:
-            cluster = clusterClass(np.array(templist_res), np.array(templist_box), i, 0)
-            clusterClass_list.append(cluster)
+        # Sort Car by length and angle conditions
+        # Save measured centroid, box, id, and processed
+        if (width >= 1 or length >= 1) and width<=4 and length <= 8:
+            if math.fabs(yaw - yaw_norm) >= math.pi/3:
+                # cluster = clusterClass(np.array(templist_res), np.array(templist_box), i, 1)
+                # clusterClass_list.append(cluster)
+                measured_centroid = np.append(measured_centroid, [templist_res], axis = 0)
+                measured_box = np.append(measured_box, [templist_box], axis = 0)
+                cluster_id.append(i)
+                #plt.plot(box_plot[:,0], box_plot[:,1], 'ro', markersize = 3)
 
+            
+                # u, v = math.cos(yaw), math.sin(yaw)
+                # [u,v] = (np.array([ [0,-1], [1,0]]) @ np.asarray([u,v]).T).T 
+                # plt.quiver(box_center_plot[0], box_center_plot[1], u, v, scale= 3, scale_units = 'inches', color = 'red')
+
+            # else:
+            #     cluster = clusterClass(np.array(templist_res), np.array(templist_box), i, 0)
+            #     clusterClass_list.append(cluster)
+
+    processed = np.zeros(len(cluster_id))
 
     ########### Track Update ############
     if Track_list:
         for i in range(0,len(Track_list)):
             if Track_list[i].dead_flag == 1:
                 continue
-            Track_list[i].unscented_kalman_filter(clusterClass_list, dt)
+            Track_list[i].unscented_kalman_filter(measured_centroid, measured_box, cluster_id, processed, dt)
 
     ########### Create Track ###########
     
-    for i in range(0, len(clusterClass_list)):
-        if clusterClass_list[i].processed == 1 or clusterClass_list[i].car_flag == 0:
+    for i in range(0, len(measured_centroid)):
+        if processed[i] == 1:
             continue
         
         # z_meas[i] that are not used : Create new track
-        clusterClass_list[i].processed = 1
-        Track = track(clusterClass_list[i], frame_num, i)
+        #clusterClass_list[i].processed = 1
+        Track = track(measured_centroid[i], measured_box[i], frame_num, cluster_id[i])
         Track_list.append(Track)
     
     ########## Track Management ########
@@ -159,7 +188,7 @@ for files in file_list:
                     continue
 
                 # Activate Track
-                if Track_list[i].Activated == 0 and Track_list[i].Age >= 3:
+                if Track_list[i].Activated == 0 and Track_list[i].Age >= 5:
                     Track_list[i].Activated = 1
                 
                 # deActivate Track
@@ -192,6 +221,7 @@ for files in file_list:
         if Track_list[i].Activated == 1 and Track_list[i].processed == 1:
             temp = cloud_downsample.select_by_index(np.where(labels == Track_list[i].ClusterID)[0])
             temp = np.asarray(temp.points)
+            Track_list[i].processed = 0
 
             if len(temp) == 0:
                 continue
@@ -201,11 +231,16 @@ for files in file_list:
             temp = (np.array([ [0,-1,0], [1,0,0], [0,0,1]]) @ temp.T).T
             center = np.array([Track_list[i].state[0], Track_list[i].state[1]])
             center = (np.array([[0,-1], [1,0]]) @ center.T).T
-            #plt.plot(temp[:,0], temp[:,1], 'ro', markersize = 0.4)
+            # plt.plot(temp[:,0], temp[:,1], 'ro', markersize = 0.4)
             # plt.plot(center[0], center[1], 'go')
             plt.text(center[0], center[1], 'Track{}'.format(i+1))
-
             u, v = math.cos(Track_list[i].state[3]), math.sin(Track_list[i].state[3])
+
+            # if Track_list[i].state[2] >= -1:
+            #     u, v = math.cos(Track_list[i].state[3]), math.sin(Track_list[i].state[3])
+            # elif Track_list[i].state[2] < -1:
+            #     u, v = math.cos(Track_list[i].state[3] + math.pi), math.sin(Track_list[i].state[3] + math.pi)
+            
             [u,v] = (np.array([ [0,-1], [1,0]]) @ np.asarray([u,v]).T).T 
             plt.quiver(center[0], center[1], u, v, scale= 3, scale_units = 'inches', color = 'red')
             # Plot Track's trace
@@ -214,7 +249,7 @@ for files in file_list:
             #plt.plot(Track_list[i].trace_x[:], Track_list[i].trace_y[:], 'g')
 
         # Initialize Tracks' processed check
-        Track_list[i].processed = 0
+        
 
     plt.draw()
     plt.pause(0.001)
@@ -242,19 +277,19 @@ for files in file_list:
 
 for i in range(0, len(Track_list)):
     if Track_list[i].Activated == 1:
-        Track_list_valid.append(Track_list[i])
+        Track_list_valid.append((Track_list[i], i+1))
 
 validtracklistnum =len(Track_list_valid)
 print("# of all track_list : ", len(Track_list))
 print("# of valid track_list : ", validtracklistnum)
 
-    # '''for i in range(validtracklistnum):
-    # index = i+1
-    # start = Track_list_valid[i].Start
-    # duration = len(Track_list_valid[i].history_state)
-    # state = Track_list_valid[i].history_state
-    # framenum = frame_num
-    # save_to_csv(index, start, duration, state, framenum, path)'''
+for i in range(validtracklistnum):
+    index = Track_list_valid[i][1]
+    start = Track_list_valid[i][0].Start
+    duration = len(Track_list_valid[i][0].history_state)
+    state = Track_list_valid[i][0].history_state
+    framenum = frame_num
+    save_to_csv(index, start, duration, state, framenum, path_csv)
     
 # reach to csv file
 # csv_file = pd.read_csv('{}.csv'.format(i), index_col=0) # set i~
