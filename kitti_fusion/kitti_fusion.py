@@ -63,9 +63,8 @@ pointcloud = pointcloud[(pointcloud[:,1] >= -10)]
 pointcloud = pointcloud[(pointcloud[:,1] <= 10)]
 
 pointcloud[:,3] = 1.0
-start = time.time()
+
 Y = (Calibration_matrix @ pointcloud.T).T
-print(time.time() - start)
 
 Point_x = Y[:,0] / Y[:,2]
 Point_y = Y[:,1] / Y[:,2]
@@ -76,21 +75,14 @@ Point_y = Point_y.astype('int64')
 Point_x = Point_x.reshape(-1,1)
 Point_y = Point_y.reshape(-1,1)
 lidar2pixel = np.append(Point_x,Point_y, axis =1)
+start = time.time()
+road_pixel = GetIntersection(lidar2pixel,semanticMap,24)
+print(time.time() - start)
 
-# start = time.time()
 for i in range(0, len(Point_x)):
     cv2.circle(img, (Point_x[i], Point_y[i]), 1, (0, 0, 255), -1)
-# print(time.time() - start)
-
-road_pixel = GetIntersection(lidar2pixel,semanticMap,24)
-
-
 for i in range(0, len(road_pixel)):
     cv2.circle(img, (road_pixel[i][0], road_pixel[i][1]), 1, (0, 255, 0), -1)
 
-# cv2.circle(img,(1,1), 1, (255, 255, 0), -1)
 cv2.imshow("Show Image", img)
 cv2.waitKey(0)
-
-#for files in file_list:
-#    dt = 0.2
