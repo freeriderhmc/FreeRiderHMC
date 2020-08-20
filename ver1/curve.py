@@ -25,10 +25,6 @@ def curve(pc_lane):
     if len(left_lane) <10 and len(right_lane)<10:
         leftdy, leftc = 0,2
         rightdy, rightc = 0,-2
-        xleft = np.arange(5,40,0.01).reshape(-1,1)
-        xright = np.arange(5,40,0.01).reshape(-1,1)
-        left_pred = 2
-        right_pred = -2
         
     elif len(left_lane)<10:
         xright = right_lane[:][:,0].reshape(-1,1)
@@ -38,12 +34,7 @@ def curve(pc_lane):
         rightdy = right_fit.coef_
         rightc = right_fit.intercept_
 
-        xright_plot = np.arange(5,40,0.01).reshape(-1,1)
-        yright_plot = right_fit.predict(xright_plot).reshape(-1,1)
-        
-        xleft_plot = np.arange(5,40,35/len(xright)).reshape(-1,1)
         leftdy, leftc = rightdy,rightc+3
-        yleft_plot = right_pred+3
 
     elif len(right_lane)<10:
         xleft = left_lane[:][:,0].reshape(-1,1)
@@ -53,12 +44,7 @@ def curve(pc_lane):
         leftdy = left_fit.coef_
         leftc = left_fit.intercept_
 
-        xleft_plot = np.arange(5,40,0.01).reshape(-1,1)
-        yleft_plot = left_fit.predict(xleft_plot).reshape(-1,1)
-
-        xright_plot = np.arange(5,40,35/len(xright)).reshape(-1,1)
         rightdy, rightc = leftdy,leftc-3
-        yright_plot = right_pred+3
 
     else:
         xleft = left_lane[:][:,0].reshape(-1,1)
@@ -73,12 +59,25 @@ def curve(pc_lane):
         rightdy = right_fit.coef_
         leftc = left_fit.intercept_
         rightc = right_fit.intercept_
-        
-        xleft_plot = np.arange(5,40,0.01).reshape(-1,1)
-        yleft_plot = left_fit.predict(xleft_plot).reshape(-1,1)
 
-        xright_plot = np.arange(5,40,0.01).reshape(-1,1)
+    xleft_plot = np.arange(5,40,0.01).reshape(-1,1)
+    xright_plot = np.arange(5,40,0.01).reshape(-1,1)
+
+    if -0.07 < leftdy < 0.07 and -0.07 < rightdy < 0.07 :
+        yleft_plot = left_fit.predict(xleft_plot).reshape(-1,1)
         yright_plot = right_fit.predict(xright_plot).reshape(-1,1)
+    elif -0.07 < leftdy < 0.07:
+        yleft_plot = left_fit.predict(xleft_plot).reshape(-1,1)
+        yright_plot = yleft_plot+3
+        
+    elif -0.07 < rightdy < 0.07:
+        yright_plot = right_fit.predict(xright_plot).reshape(-1,1)
+        yleft_plot = yright_plot+3
+        
+    else:
+        yleft_plot = 2
+        yright_plot = -2
+           
 
     left_lane = np.append(xleft_plot,yleft_plot,axis =1)
     right_lane = np.append(xright_plot,yright_plot,axis =1)
@@ -86,9 +85,12 @@ def curve(pc_lane):
 
     return left_lane, right_lane, [leftdy,leftc], [rightdy,rightc]
 
+
+
 def line_equation(x,line_dy,line_c): 
     y = (x-line_c)/line_dy
     return y
+
 
 def invadeROI(point, left_fit, right_fit):
     leftdy = left_fit[0]
