@@ -15,6 +15,9 @@ def curve(pc_lane):
     line_fitter1 = LinearRegression()
     line_fitter2 = LinearRegression()
 
+    xleft_plot = np.arange(5,40,0.01).reshape(-1,1)
+    xright_plot = np.arange(5,40,0.01).reshape(-1,1)
+
     # left_lane = pc_lane[pc_lane[:][:,1]<-2]
     # left_lane = left_lane[left_lane[:][:,1]>-4]
     # left_lane = left_lane[left_lane[:][:,0]<15]
@@ -25,7 +28,9 @@ def curve(pc_lane):
     if len(left_lane) <10 and len(right_lane)<10:
         leftdy, leftc = 0,2
         rightdy, rightc = 0,-2
-        
+        yleft_plot = 2
+        yright_plot = -2
+    
     elif len(left_lane)<10:
         xright = right_lane[:][:,0].reshape(-1,1)
         yright = right_lane[:][:,1].reshape(-1,1)
@@ -35,6 +40,13 @@ def curve(pc_lane):
         rightc = right_fit.intercept_
 
         leftdy, leftc = rightdy,rightc+3
+        if -0.07 < rightdy < 0.07:
+            yright_plot = right_fit.predict(xright_plot).reshape(-1,1)
+            yleft_plot = yright_plot+3            
+        else:
+            yleft_plot = 2
+            yright_plot = -2
+           
 
     elif len(right_lane)<10:
         xleft = left_lane[:][:,0].reshape(-1,1)
@@ -46,6 +58,13 @@ def curve(pc_lane):
 
         rightdy, rightc = leftdy,leftc-3
 
+        if -0.07 < leftdy < 0.07:
+            yleft_plot = left_fit.predict(xleft_plot).reshape(-1,1)
+            yright_plot = yleft_plot+3
+        else:
+            yleft_plot = 2
+            yright_plot = -2
+
     else:
         xleft = left_lane[:][:,0].reshape(-1,1)
         yleft = left_lane[:][:,1].reshape(-1,1)
@@ -60,24 +79,19 @@ def curve(pc_lane):
         leftc = left_fit.intercept_
         rightc = right_fit.intercept_
 
-    xleft_plot = np.arange(5,40,0.01).reshape(-1,1)
-    xright_plot = np.arange(5,40,0.01).reshape(-1,1)
-
-    if -0.07 < leftdy < 0.07 and -0.07 < rightdy < 0.07 :
-        yleft_plot = left_fit.predict(xleft_plot).reshape(-1,1)
-        yright_plot = right_fit.predict(xright_plot).reshape(-1,1)
-    elif -0.07 < leftdy < 0.07:
-        yleft_plot = left_fit.predict(xleft_plot).reshape(-1,1)
-        yright_plot = yleft_plot+3
-        
-    elif -0.07 < rightdy < 0.07:
-        yright_plot = right_fit.predict(xright_plot).reshape(-1,1)
-        yleft_plot = yright_plot+3
-        
-    else:
-        yleft_plot = 2
-        yright_plot = -2
-           
+        if -0.07 < leftdy < 0.07 and -0.07 < rightdy < 0.07 :
+            yleft_plot = left_fit.predict(xleft_plot).reshape(-1,1)
+            yright_plot = right_fit.predict(xright_plot).reshape(-1,1)
+        elif -0.07 < leftdy < 0.07:
+            yleft_plot = left_fit.predict(xleft_plot).reshape(-1,1)
+            yright_plot = yleft_plot+3            
+        elif -0.07 < rightdy < 0.07:
+            yright_plot = right_fit.predict(xright_plot).reshape(-1,1)
+            yleft_plot = yright_plot+3            
+        else:
+            yleft_plot = 2
+            yright_plot = -2
+            
 
     left_lane = np.append(xleft_plot,yleft_plot,axis =1)
     right_lane = np.append(xright_plot,yright_plot,axis =1)
