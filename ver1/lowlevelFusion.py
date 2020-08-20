@@ -71,14 +71,14 @@ plt.ion()
 plt.figure(figsize=(10, 70))
 cv2.namedWindow('Show Image')
 
-path = "/media/yimju/Samsung_T5/kitti_for_train/faraway_lanechange/"
+path = "/media/jinyoung/Samsung_T5/kitti_for_train/faraway_lanechange/"
 path_lidar = path + "lidar/"
 path_csv = path + "csvdata/"
 path_image = path + "image/"
 path_semanticMap = path + "binfile/"
 
-model = load_model('./car_kitti_9steps.h5')
-# model = load_model('/home/jinyoung/model/car_kitti_moreandmore_overfit.h5')
+# model = load_model('./car_kitti_9steps.h5')
+model = load_model('/home/jinyoung/model/car_kitti_9steps.h5')
 
 file_list = loadData.load_data(path_lidar)
 image_list = loadData.load_data(path_image)
@@ -383,8 +383,12 @@ for files in file_list:
             temp_state = Track_list[i].history_state[length_his_state-15:]
             final_state = minmaxScailing(temp_state.tolist(), 15.720, 13.890, 2.301, 3.142, -3.054, 8.282)
             X_test = np.array(final_state)[:,:,np.newaxis,np.newaxis]
-            XLIST = np.squeeze(model.predict(X_test[np.newaxis, :, :]))[:,0]
-            YLIST = np.squeeze(model.predict(X_test[np.newaxis, :, :]))[:,1]
+
+            answer = np.squeeze(model.predict(X_test[np.newaxis, :, :]))
+            XLIST = answer[:,0]
+            YLIST = answer[:,1]
+            YAWLIST = answer[:,3]
+            #YAWLIST = YAWLIST*8.282-3.054
             #Track_list[i].motionPredict = 1
             flag =1
         else:
@@ -414,27 +418,8 @@ for files in file_list:
             
             w_box = Track_list[i].width_max
             l_box = Track_list[i].length_max
-            yaw_box = Track_list[i].state[3]
-            #yaw_box = Track_list[i].yaw_angle
-            # if(yaw_box>=0):
-            #     rec_box_1 = np.array([center[0] + math.cos(yaw_box) * l_box / 2 - math.sin(yaw_box) * w_box / 2
-            #                         ,center[1] + math.sin(yaw_box) * l_box / 2 + math.cos(yaw_box) * w_box / 2])
-            #     rec_box_2 = np.array([center[0] - math.cos(yaw_box) * l_box / 2 - math.sin(yaw_box) * w_box / 2
-            #                         ,center[1] - math.sin(yaw_box) * l_box / 2 + math.cos(yaw_box) * w_box / 2])
-            #     rec_box_3 = np.array([center[0] - math.cos(yaw_box) * l_box / 2 + math.sin(yaw_box) * w_box / 2
-            #                         ,center[1] - math.sin(yaw_box) * l_box / 2 - math.cos(yaw_box) * w_box / 2])
-            #     rec_box_4 = np.array([center[0] + math.cos(yaw_box) * l_box / 2 + math.sin(yaw_box) * w_box / 2
-            #                         ,center[1] + math.sin(yaw_box) * l_box / 2 - math.cos(yaw_box) * w_box / 2])
-
-            # elif(yaw_box<0):
-            #     rec_box_1 = np.array([center[0] - math.cos(yaw_box) * l_box / 2 - math.sin(yaw_box) * w_box / 2
-            #                         ,center[1] - math.sin(yaw_box) * l_box / 2 + math.cos(yaw_box) * w_box / 2])
-            #     rec_box_2 = np.array([center[0] - math.cos(yaw_box) * l_box / 2 + math.sin(yaw_box) * w_box / 2
-            #                         ,center[1] - math.sin(yaw_box) * l_box / 2 - math.cos(yaw_box) * w_box / 2])
-            #     rec_box_3 = np.array([center[0] + math.cos(yaw_box) * l_box / 2 + math.sin(yaw_box) * w_box / 2
-            #                         ,center[1] + math.sin(yaw_box) * l_box / 2 - math.cos(yaw_box) * w_box / 2])
-            #     rec_box_4 = np.array([center[0] + math.cos(yaw_box) * l_box / 2 - math.sin(yaw_box) * w_box / 2
-            #                         ,center[1] + math.sin(yaw_box) * l_box / 2 + math.cos(yaw_box) * w_box / 2])
+            #yaw_box = Track_list[i].state[3]
+            
             
             # rec_box_1 = (np.array([[0,-1], [1,0]]) @ rec_box_1.T).T
             # rec_box_2 = (np.array([[0,-1], [1,0]]) @ rec_box_2.T).T
@@ -467,14 +452,46 @@ for files in file_list:
                 if(flag==1):
                     XLIST = XLIST*13.890 + 15.720
                     YLIST = YLIST*3.142+2.301
+                    yaw_box = YAWLIST[8]
+                    #yaw_box = Track_list[i].yaw_angle
+                    if(yaw_box>=0):
+                        rec_box_1 = np.array([XLIST[8] + math.cos(yaw_box) * l_box / 2 - math.sin(yaw_box) * w_box / 2
+                                            ,YLIST[8] + math.sin(yaw_box) * l_box / 2 + math.cos(yaw_box) * w_box / 2])
+                        rec_box_2 = np.array([XLIST[8] - math.cos(yaw_box) * l_box / 2 - math.sin(yaw_box) * w_box / 2
+                                            ,YLIST[8] - math.sin(yaw_box) * l_box / 2 + math.cos(yaw_box) * w_box / 2])
+                        rec_box_3 = np.array([XLIST[8] - math.cos(yaw_box) * l_box / 2 + math.sin(yaw_box) * w_box / 2
+                                            ,YLIST[8] - math.sin(yaw_box) * l_box / 2 - math.cos(yaw_box) * w_box / 2])
+                        rec_box_4 = np.array([XLIST[8] + math.cos(yaw_box) * l_box / 2 + math.sin(yaw_box) * w_box / 2
+                                            ,YLIST[8] + math.sin(yaw_box) * l_box / 2 - math.cos(yaw_box) * w_box / 2])
+
+                    elif(yaw_box<0):
+                        rec_box_1 = np.array([XLIST[8] - math.cos(yaw_box) * l_box / 2 - math.sin(yaw_box) * w_box / 2
+                                            ,YLIST[8] - math.sin(yaw_box) * l_box / 2 + math.cos(yaw_box) * w_box / 2])
+                        rec_box_2 = np.array([XLIST[8] - math.cos(yaw_box) * l_box / 2 + math.sin(yaw_box) * w_box / 2
+                                            ,YLIST[8] - math.sin(yaw_box) * l_box / 2 - math.cos(yaw_box) * w_box / 2])
+                        rec_box_3 = np.array([XLIST[8] + math.cos(yaw_box) * l_box / 2 + math.sin(yaw_box) * w_box / 2
+                                            ,YLIST[8] + math.sin(yaw_box) * l_box / 2 - math.cos(yaw_box) * w_box / 2])
+                        rec_box_4 = np.array([XLIST[8] + math.cos(yaw_box) * l_box / 2 - math.sin(yaw_box) * w_box / 2
+                                            ,YLIST[8] + math.sin(yaw_box) * l_box / 2 + math.cos(yaw_box) * w_box / 2])
+            
+                    
                     plt.plot(XLIST, YLIST, 'ro', markersize = 5)
+                    theta = np.linspace(0, 2*np.pi, 100)
+
+                    radius = 1
+
+                    circle_x = XLIST[8]+radius*np.cos(theta)
+                    circle_y = YLIST[8]+radius*np.sin(theta)
+
+                    #plt.plot(circle_x, circle_y, 'r')
+                    plt.plot((rec_box_1[0], rec_box_2[0], rec_box_3[0], rec_box_4[0], rec_box_1[0]), (rec_box_1[1], rec_box_2[1], rec_box_3[1], rec_box_4[1], rec_box_1[1]), 'r')
             elif Track_list[i].classification == 1:
                 plt.plot(center[0], center[1], 'go', markersize = 10)
             elif Track_list[i].classification == 2:
                 plt.plot(center[0], center[1], 'bo', markersize = 10)
-                if(Track_list[i].motionPredict==1):
-                    XLIST = XLIST*13.890 + 15.720
-                    YLIST = YLIST*3.142+2.301
+                #if(Track_list[i].motionPredict==1):
+                    #XLIST = XLIST*13.890 + 15.720
+                    #YLIST = YLIST*3.142+2.301
                     #plt.plot(XLIST, YLIST, 'b', linewidth=5)
 
             plt.text(center[0], center[1], 'Track{}'.format(i+1))
@@ -526,10 +543,8 @@ for i in range(0, len(Track_list)):
             Track_list_valid.append((Track_list[i], i+1))
     
 validtracklistnum =len(Track_list_valid)
-
 ######################################
 # Save csv Data
-
 for i in range(validtracklistnum):
     index = Track_list_valid[i][1]
     start = Track_list_valid[i][0].Start
