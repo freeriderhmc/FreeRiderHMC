@@ -15,8 +15,8 @@ from curve import curve, invadeROI
 from tensorflow.keras.models import load_model
 
 import keras
-import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
+import tensorflow as tf
+#tf.disable_v2_behavior()
 import Jetson.GPIO as GPIO
 from threading import Thread
 
@@ -121,7 +121,8 @@ path_csv = path + "csvdata/"
 path_image = path + "image/"
 path_semanticMap = path + "binfile/"
 
-model = load_model('./car_kitti_9steps.h5')
+car_model = load_model('./car_kitti_9steps.h5')
+people_model = load_model('./people_kitti_9steps.h5')
 
 file_list = loadData.load_data(path_lidar)
 image_list = loadData.load_data(path_image)
@@ -149,7 +150,6 @@ for files in file_list:
     else_id = []
     else_processed = []
     
-    print('before cv2 imread')
     # Load Image , Semantic Map, Pointcloud
     img = cv2.imread(path_image + image_list[frame_num], cv2.IMREAD_COLOR)
     semanticMap = np.fromfile(path_semanticMap + semantic_list[frame_num], dtype = np.int64)
@@ -211,7 +211,6 @@ for files in file_list:
 
     #################### 
     # # For lane detection
-    print('before lane detection')
     Y_below = (Calibration_matrix @ pc_front_below.T).T
     Y_below[:,0] = Y_below[:,0] / Y_below[:,2]
     Y_below[:,1] = Y_below[:,1] / Y_below[:,2]
@@ -236,7 +235,6 @@ for files in file_list:
 
     plt.plot(left_lane[:,0], left_lane[:,1],'r')
     plt.plot(right_lane[:,0],right_lane[:,1],'r')
-    print('after plt plot left, right lane')
 
     ####################
     # For Obstacles
@@ -432,22 +430,49 @@ for files in file_list:
 
     for i in range(0, len(Track_list)):
         length_his_state = len(Track_list[i].history_state)
+        
         if((Track_list[i].classification==2 or Track_list[i].classification==0) and Track_list[i].Activated==1 and Track_list[i].dead_flag==0 and length_his_state>=15):
             
-            temp_state = Track_list[i].history_state[length_his_state-15:]
-            final_state = minmaxScailing(temp_state.tolist(), 15.720, 13.890, 2.301, 3.142, -3.054, 8.282)
-            X_test = np.array(final_state)[:,:,np.newaxis,np.newaxis]
+            car_temp_state = Track_list[i].history_state[length_his_state-15:]
+            car_final_state = minmaxScailing(car_temp_state.tolist(), 15.720, 13.890, 2.301, 3.142, -3.054, 8.282)
+            car_test = np.array(car_final_state)[:,:,np.newaxis,np.newaxis]
 
-            answer = np.squeeze(model.predict(X_test[np.newaxis, :, :]))
-            XLIST = answer[:,0]
-            YLIST = answer[:,1]
-            YAWLIST = answer[:,3]
+            car_answer = np.squeeze(car_model.predict(car_test[np.newaxis, :, :]))
+            
+            car_XLIST = car_answer[:,0]*13.890+15.720
+            car_YLIST = car_answer[:,1]*3.142+2.301
+            car_YAWLIST = car_answer[:,3]
+            if(((car_XLIST[0]-Track_list[i].state[0])**2 + (car_YLIST[0]-Track_list[i].state[1])**2)**0.5 < 5):
+                
+                car_flag =1
+            else:
+                car_flag = 0
+            ped_flag = 0
             #YAWLIST = YAWLIST*8.282-3.054
             #Track_list[i].motionPredict = 1
-            flag =1
+        elif(Track_list[i].classification==1 and Track_list[i].Activated==1 and Track_list[i].dead_flag==0 and length_his_state>=15):
+            ped_temp_state = Track_list[i].history_state[length_his_state-15:]
+            ped_final_state = minmaxScailing(ped_temp_state.tolist(), 16.474, 7.187, -0.721, 3.424, -2.250, 2.363)
+            ped_test = np.array(ped_final_state)[:,:,np.newaxis,np.newaxis]
+
+            ped_answer = np.squeeze(people_model.predict(ped_test[np.newaxis, :, :]))
+
+            ped_XLIST = ped_answer[:,0]*7.187 + 16.474
+            ped_YLIST = ped_answer[:,1]*3.424 - 0.721
+            ped_YAWLIST = ped_answer[:,3]
+            print('if human', ((ped_XLIST[0]-Track_list[i].state[0])**2 + (ped_YLIST[0]-Track_list[i].state[1])**2)**0.5)
+            if(((ped_XLIST[0]-Track_list[i].state[0])**2 + (ped_YLIST[0]-Track_list[i].state[1])**2)**0.5 < 5):
+                #print('if human', ped_XLIST[0], Track_list[i].state[0])
+                ped_flag =1
+            else:
+                ped_flag = 0
+            car_flag = 0
+            #YAWLIST = YAWLIST*8.282-3.054
+            #Track_list[i].motionPredict = 1
         else:
             #Track_list[i].motionPredict = 0
-            flag = 0
+            car_flag = 0
+            ped_flag = 0
             # x = graph.get_tensor_by_name('x_:0')
             # feed_dict ={x:final_state.reshape(-1, 12,5)} 
             # op_to_restore = graph.get_tensor_by_name('pred:0')
@@ -501,60 +526,115 @@ for files in file_list:
 
             #14.881, 13.291, 2.256, 3.230
             #15.720, 13.890, 2.301, 3.142
+           
             if Track_list[i].classification == 0:
                 plt.plot(center[0], center[1], 'ro', markersize = 10)
-                if(flag==1):
-                    XLIST = XLIST*13.890 + 15.720
-                    YLIST = YLIST*3.142+2.301
-                    yaw_box = YAWLIST[8]
+                if(car_flag==1):
+                    yaw_box = car_YAWLIST[8]
                     #yaw_box = Track_list[i].yaw_angle
                     if(yaw_box>=0):
-                        rec_box_1 = np.array([XLIST[8] + math.cos(yaw_box) * l_box / 2 - math.sin(yaw_box) * w_box / 2
-                                            ,YLIST[8] + math.sin(yaw_box) * l_box / 2 + math.cos(yaw_box) * w_box / 2])
-                        rec_box_2 = np.array([XLIST[8] - math.cos(yaw_box) * l_box / 2 - math.sin(yaw_box) * w_box / 2
-                                            ,YLIST[8] - math.sin(yaw_box) * l_box / 2 + math.cos(yaw_box) * w_box / 2])
-                        rec_box_3 = np.array([XLIST[8] - math.cos(yaw_box) * l_box / 2 + math.sin(yaw_box) * w_box / 2
-                                            ,YLIST[8] - math.sin(yaw_box) * l_box / 2 - math.cos(yaw_box) * w_box / 2])
-                        rec_box_4 = np.array([XLIST[8] + math.cos(yaw_box) * l_box / 2 + math.sin(yaw_box) * w_box / 2
-                                            ,YLIST[8] + math.sin(yaw_box) * l_box / 2 - math.cos(yaw_box) * w_box / 2])
-
+                        rec_box_1 = np.array([car_XLIST[8] + math.cos(yaw_box) * l_box / 2 - math.sin(yaw_box) * w_box / 2
+                                            ,car_YLIST[8] + math.sin(yaw_box) * l_box / 2 + math.cos(yaw_box) * w_box / 2])
+                        rec_box_2 = np.array([car_XLIST[8] - math.cos(yaw_box) * l_box / 2 - math.sin(yaw_box) * w_box / 2
+                                            ,car_YLIST[8] - math.sin(yaw_box) * l_box / 2 + math.cos(yaw_box) * w_box / 2])
+                        rec_box_3 = np.array([car_XLIST[8] - math.cos(yaw_box) * l_box / 2 + math.sin(yaw_box) * w_box / 2
+                                            ,car_YLIST[8] - math.sin(yaw_box) * l_box / 2 - math.cos(yaw_box) * w_box / 2])
+                        rec_box_4 = np.array([car_XLIST[8] + math.cos(yaw_box) * l_box / 2 + math.sin(yaw_box) * w_box / 2
+                                            ,car_YLIST[8] + math.sin(yaw_box) * l_box / 2 - math.cos(yaw_box) * w_box / 2])
 
                     elif(yaw_box<0):
-                        rec_box_1 = np.array([XLIST[8] - math.cos(yaw_box) * l_box / 2 - math.sin(yaw_box) * w_box / 2
-                                            ,YLIST[8] - math.sin(yaw_box) * l_box / 2 + math.cos(yaw_box) * w_box / 2])
-                        rec_box_2 = np.array([XLIST[8] - math.cos(yaw_box) * l_box / 2 + math.sin(yaw_box) * w_box / 2
-                                            ,YLIST[8] - math.sin(yaw_box) * l_box / 2 - math.cos(yaw_box) * w_box / 2])
-                        rec_box_3 = np.array([XLIST[8] + math.cos(yaw_box) * l_box / 2 + math.sin(yaw_box) * w_box / 2
-                                            ,YLIST[8] + math.sin(yaw_box) * l_box / 2 - math.cos(yaw_box) * w_box / 2])
-                        rec_box_4 = np.array([XLIST[8] + math.cos(yaw_box) * l_box / 2 - math.sin(yaw_box) * w_box / 2
-                                            ,YLIST[8] + math.sin(yaw_box) * l_box / 2 + math.cos(yaw_box) * w_box / 2])
-
-                    ####################vibration motor#############################
-                    rec_box = [rec_box_1, rec_box_2, rec_box_3, rec_box_4]
-                    for point in rec_box:
-                        if invadeROI(point,left_fit,right_fit):
-                            if center[1] <0: GPIO.output(LB_pin,GPIO.HIGH)
-                            else: GPIO.output(RB_pin,GPIO.HIGH)                           
-                
-                    ################################################################
-                    plt.plot(XLIST, YLIST, 'ro', markersize = 5)
+                        rec_box_1 = np.array([car_XLIST[8] - math.cos(yaw_box) * l_box / 2 - math.sin(yaw_box) * w_box / 2
+                                            ,car_YLIST[8] - math.sin(yaw_box) * l_box / 2 + math.cos(yaw_box) * w_box / 2])
+                        rec_box_2 = np.array([car_XLIST[8] - math.cos(yaw_box) * l_box / 2 + math.sin(yaw_box) * w_box / 2
+                                            ,car_YLIST[8] - math.sin(yaw_box) * l_box / 2 - math.cos(yaw_box) * w_box / 2])
+                        rec_box_3 = np.array([car_XLIST[8] + math.cos(yaw_box) * l_box / 2 + math.sin(yaw_box) * w_box / 2
+                                            ,car_YLIST[8] + math.sin(yaw_box) * l_box / 2 - math.cos(yaw_box) * w_box / 2])
+                        rec_box_4 = np.array([car_XLIST[8] + math.cos(yaw_box) * l_box / 2 - math.sin(yaw_box) * w_box / 2
+                                            ,car_YLIST[8] + math.sin(yaw_box) * l_box / 2 + math.cos(yaw_box) * w_box / 2])
+            
+                    
+                    plt.plot(car_XLIST, car_YLIST, 'ro', markersize = 5)
                     theta = np.linspace(0, 2*np.pi, 100)
 
                     radius = 1
 
-                    circle_x = XLIST[8]+radius*np.cos(theta)
-                    circle_y = YLIST[8]+radius*np.sin(theta)
+                    circle_x = car_XLIST[8]+radius*np.cos(theta)
+                    circle_y = car_YLIST[8]+radius*np.sin(theta)
 
                     #plt.plot(circle_x, circle_y, 'r')
                     plt.plot((rec_box_1[0], rec_box_2[0], rec_box_3[0], rec_box_4[0], rec_box_1[0]), (rec_box_1[1], rec_box_2[1], rec_box_3[1], rec_box_4[1], rec_box_1[1]), 'r')
             elif Track_list[i].classification == 1:
                 plt.plot(center[0], center[1], 'go', markersize = 10)
+                if(ped_flag==1):
+                    yaw_box = ped_YAWLIST[8]
+                    #yaw_box = Track_list[i].yaw_angle
+                    if(yaw_box>=0):
+                        rec_box_1 = np.array([ped_XLIST[8] + math.cos(yaw_box) * l_box / 2 - math.sin(yaw_box) * w_box / 2
+                                            ,ped_YLIST[8] + math.sin(yaw_box) * l_box / 2 + math.cos(yaw_box) * w_box / 2])
+                        rec_box_2 = np.array([ped_XLIST[8] - math.cos(yaw_box) * l_box / 2 - math.sin(yaw_box) * w_box / 2
+                                            ,ped_YLIST[8] - math.sin(yaw_box) * l_box / 2 + math.cos(yaw_box) * w_box / 2])
+                        rec_box_3 = np.array([ped_XLIST[8] - math.cos(yaw_box) * l_box / 2 + math.sin(yaw_box) * w_box / 2
+                                            ,ped_YLIST[8] - math.sin(yaw_box) * l_box / 2 - math.cos(yaw_box) * w_box / 2])
+                        rec_box_4 = np.array([ped_XLIST[8] + math.cos(yaw_box) * l_box / 2 + math.sin(yaw_box) * w_box / 2
+                                            ,ped_YLIST[8] + math.sin(yaw_box) * l_box / 2 - math.cos(yaw_box) * w_box / 2])
+
+                    elif(yaw_box<0):
+                        rec_box_1 = np.array([ped_XLIST[8] - math.cos(yaw_box) * l_box / 2 - math.sin(yaw_box) * w_box / 2
+                                            ,ped_YLIST[8] - math.sin(yaw_box) * l_box / 2 + math.cos(yaw_box) * w_box / 2])
+                        rec_box_2 = np.array([ped_XLIST[8] - math.cos(yaw_box) * l_box / 2 + math.sin(yaw_box) * w_box / 2
+                                            ,ped_YLIST[8] - math.sin(yaw_box) * l_box / 2 - math.cos(yaw_box) * w_box / 2])
+                        rec_box_3 = np.array([ped_XLIST[8] + math.cos(yaw_box) * l_box / 2 + math.sin(yaw_box) * w_box / 2
+                                            ,ped_YLIST[8] + math.sin(yaw_box) * l_box / 2 - math.cos(yaw_box) * w_box / 2])
+                        rec_box_4 = np.array([ped_XLIST[8] + math.cos(yaw_box) * l_box / 2 - math.sin(yaw_box) * w_box / 2
+                                            ,ped_YLIST[8] + math.sin(yaw_box) * l_box / 2 + math.cos(yaw_box) * w_box / 2])
+            
+                    
+                    plt.plot(ped_XLIST, ped_YLIST, 'go', markersize = 5)
+                    theta = np.linspace(0, 2*np.pi, 100)
+
+                    radius = 1
+
+                    circle_x = ped_XLIST[8]+radius*np.cos(theta)
+                    circle_y = ped_YLIST[8]+radius*np.sin(theta)
+
+                    plt.plot(circle_x, circle_y, 'g')
+                
             elif Track_list[i].classification == 2:
                 plt.plot(center[0], center[1], 'bo', markersize = 10)
-                #if(Track_list[i].motionPredict==1):
-                    #XLIST = XLIST*13.890 + 15.720
-                    #YLIST = YLIST*3.142+2.301
-                    #plt.plot(XLIST, YLIST, 'b', linewidth=5)
+                if(car_flag==1):
+                    yaw_box = car_YAWLIST[8]
+                    #yaw_box = Track_list[i].yaw_angle
+                    if(yaw_box>=0):
+                        rec_box_1 = np.array([car_XLIST[8] + math.cos(yaw_box) * l_box / 2 - math.sin(yaw_box) * w_box / 2
+                                            ,car_YLIST[8] + math.sin(yaw_box) * l_box / 2 + math.cos(yaw_box) * w_box / 2])
+                        rec_box_2 = np.array([car_XLIST[8] - math.cos(yaw_box) * l_box / 2 - math.sin(yaw_box) * w_box / 2
+                                            ,car_YLIST[8] - math.sin(yaw_box) * l_box / 2 + math.cos(yaw_box) * w_box / 2])
+                        rec_box_3 = np.array([car_XLIST[8] - math.cos(yaw_box) * l_box / 2 + math.sin(yaw_box) * w_box / 2
+                                            ,car_YLIST[8] - math.sin(yaw_box) * l_box / 2 - math.cos(yaw_box) * w_box / 2])
+                        rec_box_4 = np.array([car_XLIST[8] + math.cos(yaw_box) * l_box / 2 + math.sin(yaw_box) * w_box / 2
+                                            ,car_YLIST[8] + math.sin(yaw_box) * l_box / 2 - math.cos(yaw_box) * w_box / 2])
+
+                    elif(yaw_box<0):
+                        rec_box_1 = np.array([car_XLIST[8] - math.cos(yaw_box) * l_box / 2 - math.sin(yaw_box) * w_box / 2
+                                            ,car_YLIST[8] - math.sin(yaw_box) * l_box / 2 + math.cos(yaw_box) * w_box / 2])
+                        rec_box_2 = np.array([car_XLIST[8] - math.cos(yaw_box) * l_box / 2 + math.sin(yaw_box) * w_box / 2
+                                            ,car_YLIST[8] - math.sin(yaw_box) * l_box / 2 - math.cos(yaw_box) * w_box / 2])
+                        rec_box_3 = np.array([car_XLIST[8] + math.cos(yaw_box) * l_box / 2 + math.sin(yaw_box) * w_box / 2
+                                            ,car_YLIST[8] + math.sin(yaw_box) * l_box / 2 - math.cos(yaw_box) * w_box / 2])
+                        rec_box_4 = np.array([car_XLIST[8] + math.cos(yaw_box) * l_box / 2 - math.sin(yaw_box) * w_box / 2
+                                            ,car_YLIST[8] + math.sin(yaw_box) * l_box / 2 + math.cos(yaw_box) * w_box / 2])
+            
+                    
+                    plt.plot(car_XLIST, car_YLIST, 'bo', markersize = 5)
+                    theta = np.linspace(0, 2*np.pi, 100)
+
+                    radius = 1
+
+                    circle_x = car_XLIST[8]+radius*np.cos(theta)
+                    circle_y = car_YLIST[8]+radius*np.sin(theta)
+
+                    #plt.plot(circle_x, circle_y, 'r')
+                    plt.plot((rec_box_1[0], rec_box_2[0], rec_box_3[0], rec_box_4[0], rec_box_1[0]), (rec_box_1[1], rec_box_2[1], rec_box_3[1], rec_box_4[1], rec_box_1[1]), 'b')
 
             plt.text(center[0], center[1], 'Track{}'.format(i+1))
 
