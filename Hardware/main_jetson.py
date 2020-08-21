@@ -104,7 +104,7 @@ frame_num = 0
 mplstyle.use('fast')
 plt.ion()
 plt.figure(figsize=(10, 70))
-cv2.namedWindow('Show Image')
+# cv2.namedWindow('Show Image')
 
 # path = "/media/jinyoung/Samsung_T5/kitti_for_train/faraway_lanechange/"
 # path_lidar = path + "lidar/"
@@ -115,7 +115,7 @@ cv2.namedWindow('Show Image')
 # # model = load_model('./car_kitti_9steps.h5')
 # model = load_model('/home/jinyoung/model/car_kitti_9steps.h5')
 
-path = "/media/yimju/10671E961A0A6A5E/kitti_10_03/"
+path = "/media/B866901C668FDA10/2011_09_28/2011_09_28_drive_0002_sync/"
 path_lidar = path + "lidar/"
 path_csv = path + "csvdata/"
 path_image = path + "image/"
@@ -530,12 +530,12 @@ for files in file_list:
                                             ,YLIST[8] + math.sin(yaw_box) * l_box / 2 + math.cos(yaw_box) * w_box / 2])
 
                     ####################vibration motor#############################
-            	    for point in [rec_box_1,rec_box_2,rec_box_3,rec_box_4]:
+                    rec_box = [rec_box_1, rec_box_2, rec_box_3, rec_box_4]
+                    for point in rec_box:
                         if invadeROI(point,left_fit,right_fit):
                             if center[1] <0: GPIO.output(LB_pin,GPIO.HIGH)
                             else: GPIO.output(RB_pin,GPIO.HIGH)                           
                 
-
                     ################################################################
                     plt.plot(XLIST, YLIST, 'ro', markersize = 5)
                     theta = np.linspace(0, 2*np.pi, 100)
@@ -595,7 +595,7 @@ for files in file_list:
     ##############################steering motor###################################
     theta = math.atan((leftdy+rightdy)/2)
     TA = theta*9
-    if frame==0: pass
+    if frame_num==0: pass
     else: 
         t.do_run = False
     c_t=time.time()
@@ -606,10 +606,10 @@ for files in file_list:
     else:
         direction = (TA-CA)/abs(TA-CA)
         TT = abs(TA-CA)/216
-        if direction<0:
+    if direction<0:
         GPIO.output(RT_pin,GPIO.HIGH)
         output_pin=RT_pin
-        else:
+    else:
         GPIO.output(LT_pin,GPIO.HIGH)
         output_pin=LT_pin
         t=Thread(target=checkSuccess, args=(TT,output_pin))
