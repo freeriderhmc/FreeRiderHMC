@@ -132,8 +132,8 @@ def invadeROI(point, left_fit, right_fit):
     y_left = line_equation(point[0], leftdy, leftc)
     y_right = line_equation(point[0], rightdy, rightc)
     
-    print("y_left : ", y_left)
-    print("y_right : ", y_right)
+    # print("y_left : ", y_left)
+    # print("y_right : ", y_right)
     
     if point[1]>y_left and point[1]<y_right: invade = True
     else: invade = False
