@@ -9,18 +9,21 @@ from sklearn.linear_model import LinearRegression
 
 def curve(pc_lane):
 
-    left_lane = pc_lane[pc_lane[:][:,1]<-1]
-    left_lane = left_lane[left_lane[:][:,1]>-3]
+    left_lane = pc_lane[pc_lane[:][:,1]>1]
+    left_lane = left_lane[left_lane[:][:,1]<3]
     left_lane = left_lane[left_lane[:][:,0]<40]
-    right_lane = pc_lane[pc_lane[:][:,1]>1] 
-    right_lane = right_lane[right_lane[:][:,1]<3]
+    right_lane = pc_lane[pc_lane[:][:,1]<-1] 
+    right_lane = right_lane[right_lane[:][:,1]>-3]
     right_lane = right_lane[right_lane[:][:,0]<40]
 
-    stop_lane = pc_lane[pc_lane[:][:,1]<2.5]
-    stop_lane = stop_lane[stop_lane[:][:,1]>-2.5]
+    stop_lane = pc_lane[pc_lane[:][:,1]<1]
+    stop_lane = stop_lane[stop_lane[:][:,1]>-1]
+    stop_lane = stop_lane[stop_lane[:][:,0]<10]
+    
 
-    if len(stop_lane)>10: stop = True
+    if len(stop_lane)>20: stop = True
     else: stop = False
+    print('stop: ',stop)
     
     line_fitter1 = LinearRegression()
     line_fitter2 = LinearRegression()
@@ -36,11 +39,11 @@ def curve(pc_lane):
     # right_lane = right_lane[right_lane[:][:,0]<15]
 
     if len(left_lane) <= 10 and len(right_lane) <= 10:
-        leftdy, leftc = 0,2
-        rightdy, rightc = 0,-2
-        yleft_plot = np.ones(3500)*2
+        leftdy, leftc = 0,1.5
+        rightdy, rightc = 0,-1.5
+        yleft_plot = np.ones(3500)*1.5
         yleft_plot = yleft_plot.reshape(-1,1)
-        yright_plot = np.ones(3500)*(-2)
+        yright_plot = np.ones(3500)*(-1.5)
         yright_plot = yright_plot.reshape(-1,1)
 
     elif len(left_lane)<10:
@@ -56,9 +59,9 @@ def curve(pc_lane):
             yright_plot = right_fit.predict(xright_plot).reshape(-1,1)
             yleft_plot = yright_plot+3            
         else:
-            yleft_plot = np.ones(3500)*2
+            yleft_plot = np.ones(3500)*1.5
             yleft_plot = yleft_plot.reshape(-1,1)
-            yright_plot = np.ones(3500)*(-2)
+            yright_plot = np.ones(3500)*(-1.5)
             yright_plot = yright_plot.reshape(-1,1)
            
 
@@ -74,11 +77,11 @@ def curve(pc_lane):
 
         if -0.07 < leftdy < 0.07:
             yleft_plot = left_fit.predict(xleft_plot).reshape(-1,1)
-            yright_plot = yleft_plot+3
+            yright_plot = yleft_plot-3
         else:
-            yleft_plot = np.ones(3500)*2
+            yleft_plot = np.ones(3500)*1.5
             yleft_plot = yleft_plot.reshape(-1,1)
-            yright_plot = np.ones(3500)*(-2)
+            yright_plot = np.ones(3500)*(-1.5)
             yright_plot = yright_plot.reshape(-1,1)
 
     else:
@@ -105,9 +108,9 @@ def curve(pc_lane):
             yright_plot = right_fit.predict(xright_plot).reshape(-1,1)
             yleft_plot = yright_plot+3            
         else:
-            yleft_plot = np.ones(3500)*2
+            yleft_plot = np.ones(3500)*(1.5)
             yleft_plot = yleft_plot.reshape(-1,1)
-            yright_plot = np.ones(3500)*(-2)
+            yright_plot = np.ones(3500)*(-1.5)
             yright_plot = yright_plot.reshape(-1,1)
 
     left_lane = np.append(xleft_plot,yleft_plot,axis =1)
@@ -131,11 +134,9 @@ def invadeROI(point, left_fit, right_fit):
     rightc = right_fit[1]
     y_left = line_equation(point[0], leftdy, leftc)
     y_right = line_equation(point[0], rightdy, rightc)
+
     
-    # print("y_left : ", y_left)
-    # print("y_right : ", y_right)
-    
-    if point[1]>y_left and point[1]<y_right: invade = True
+    if point[1]<y_left and point[1]>y_right: invade = True
     else: invade = False
     return invade
 
