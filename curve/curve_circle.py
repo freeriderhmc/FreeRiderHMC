@@ -9,17 +9,19 @@ import circle_fit as cf
 # prev_leftc = 0
 # prev_rightc = 0
 
-def curve(left_lane, right_lane):    
+def curve(left_lane, right_lane,stop):    
 
-    left_lane = left_lane[left_lane[:,0]<30]
-    right_lane = right_lane[right_lane[:,0]<30]
+    x_limit = 17
+    left_lane = left_lane[left_lane[:,0]<x_limit]
+    right_lane = right_lane[right_lane[:,0]<x_limit]
 
     xleft_plot = np.arange(5,40,0.01).reshape(-1,1)
     xright_plot = np.arange(5,40,0.01).reshape(-1,1)
 
-    if len(left_lane) < 4 and len(right_lane) < 4:
+    if len(left_lane) < 4 and len(right_lane) < 4 or stop:
         leftdy, leftc = 0,1.5
         rightdy, rightc = 0,-1.5
+        
         yleft_plot = np.ones(3500)*1.5
         yleft_plot = yleft_plot.reshape(-1,1)
         yright_plot = np.ones(3500)*(-1.5)
@@ -38,24 +40,24 @@ def curve(left_lane, right_lane):
         right_center = [xc,yc]
 
 
-        if 10 <right_r:
+        if 15 <right_r:
             yright_plot = circle_plot(xright_plot,right_center,right_r)
-            yleft_plot = yright_plot+3                        
+            yleft_plot = yright_plot+4                        
 
-            left_r = right_r-direction*3
+            left_r = right_r-direction*4
             left_center = right_center
 
             left_fit = [left_r,left_center, direction]
             right_fit = [right_r,right_center, direction]
 
         else:
-            yleft_plot = np.ones(3500)*2
+            yleft_plot = np.ones(3500)*1.5
             yleft_plot = yleft_plot.reshape(-1,1)
-            yright_plot = np.ones(3500)*(-2)
+            yright_plot = np.ones(3500)*(-1.5)
             yright_plot = yright_plot.reshape(-1,1)
 
-            leftdy, leftc = 0,2
-            rightdy, rightc = 0,-2
+            leftdy, leftc = 0,1.5
+            rightdy, rightc = 0,-1.5
 
             flag = False
             left_fit = [flag, leftdy,leftc]
@@ -70,11 +72,11 @@ def curve(left_lane, right_lane):
         else: direction = 1  
         left_center = [xc,yc]
         
-        if 10 <left_r:
+        if 15 <left_r:
             yleft_plot = circle_plot(xleft_plot,left_center,left_r)
-            yright_plot = yleft_plot+3                        
+            yright_plot = yleft_plot-4                    
 
-            right_r = left_r-direction*3
+            right_r = left_r-direction*4
             right_center = left_center
 
             left_fit = [left_r,left_center, direction]
@@ -108,9 +110,10 @@ def curve(left_lane, right_lane):
         else: right_direction = 1  
         right_center = [xc,yc]
 
-        same = left_direction*right_direction
         print('left_r : ', left_r)
         print('right_r : ', right_r)
+
+        same = left_direction*right_direction
 
         #if 20 <left_r and 20 <right_r and same >0 and abs(left_r-right_r)<5:
         if 15 <left_r and 15 <right_r and same >0:
@@ -123,34 +126,39 @@ def curve(left_lane, right_lane):
 
         #elif 20 <left_r and same>0:
         # elif 15 <left_r and same>0:
-        elif 15 <left_r:
+        elif 15 <left_r or left_r/right_r>100:
             direction = left_direction
             yleft_plot = circle_plot(xleft_plot,left_center,left_r)            
-            yright_plot = yleft_plot+3       
+            yright_plot = yleft_plot-4       
             left_fit = [left_r,left_center, direction]
             right_fit = [right_r,right_center, direction]
 
-        elif 15 <right_r and same>0:
+        elif 15 <right_r or right_r/left_r>100:
             direction = left_direction
             yright_plot = circle_plot(xright_plot,right_center,right_r)
-            yleft_plot = yright_plot+3                       
+            yleft_plot = yright_plot+4                       
 
             left_fit = [left_r,left_center, direction]
-            right_fit = [right_r,right_center, direction]           
+            right_fit = [right_r,right_center, direction] 
+                      
         else:
-            yleft_plot = np.ones(3500)*1
+            yleft_plot = np.ones(3500)*1.5
             yleft_plot = yleft_plot.reshape(-1,1)
-            yright_plot = np.ones(3500)*(-1)
+            yright_plot = np.ones(3500)*(-1.5)
             yright_plot = yright_plot.reshape(-1,1)
 
-            leftdy, leftc = 0,1
-            rightdy, rightc = 0,-1
+            leftdy, leftc = 0,1.5
+            rightdy, rightc = 0,-1.5
 
             flag = False
             left_fit = [flag, leftdy,leftc]
             right_fit = [flag, rightdy,rightc]
 
-    if yleft_plot[0]<0 or yright_plot[0] >0: 
+    print("yleft_plot : ", yleft_plot[0])
+    print("yright_plot : ", yright_plot[0])
+
+    if yleft_plot[0]<0 and yright_plot[0] >0: 
+
         leftdy, leftc = 0,1.5
         rightdy, rightc = 0,-1.5
         yleft_plot = np.ones(3500)*1.5
@@ -161,6 +169,18 @@ def curve(left_lane, right_lane):
         flag = False
         left_fit = [flag, leftdy,leftc]
         right_fit = [flag, rightdy,rightc]
+    
+    elif yleft_plot[0]<0:
+        yright_plot = yleft_plot-4                        
+
+        right_r = left_r-direction*4
+        right_center = left_center
+
+    elif yright_plot[0]>0:
+        yleft_plot = yright_plot+4                        
+        left_r = right_r-direction*4
+        left_center = right_center
+
 
     ################ Steering Angle #################
     print(left_fit[0])
@@ -174,6 +194,7 @@ def curve(left_lane, right_lane):
             # theta = math.acos(left_fit[0]/(left_fit[0]+yleft_plot[0]))
             theta = acos(left_r/(left_r+abs(yleft_plot[0])))*180/pi
         theta = theta*direction
+
     if abs(theta) < 2:
         leftdy, leftc = 0,1.5
         rightdy, rightc = 0,-1.5
@@ -186,12 +207,21 @@ def curve(left_lane, right_lane):
         left_fit = [flag, leftdy,leftc]
         right_fit = [flag, rightdy,rightc]
 
+    print('theta :' ,theta)
+
     left_lane = np.append(xleft_plot,yleft_plot,axis =1)
+    # left_lane = left_lane[~np.isnan(yleft_plot)]
     left_lane = left_lane[left_lane[:,1]<15]
     left_lane = left_lane[left_lane[:,1]>-15]
     right_lane = np.append(xright_plot,yright_plot,axis =1)
+    # right_lane = right_lane[~np.isnan(yright_plot)]
     right_lane = right_lane[right_lane[:,1]<15]
     right_lane = right_lane[right_lane[:,1]>-15]
+
+    if abs(theta) > 10:
+        left_lane = left_lane[left_lane[:,0]<15]
+        right_lane = right_lane[right_lane[:,0]<15] 
+
     return left_lane, right_lane, left_fit, right_fit, theta
 
 
