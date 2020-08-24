@@ -38,7 +38,7 @@ def curve(pc_lane):
     # right_lane = right_lane[right_lane[:][:,1]<3]
     # right_lane = right_lane[right_lane[:][:,0]<15]
 
-    if len(left_lane) <= 10 and len(right_lane) <= 10:
+    if len(left_lane) <= 10 and len(right_lane) <= 10 or stop:
         leftdy, leftc = 0,1.5
         rightdy, rightc = 0,-1.5
         yleft_plot = np.ones(3500)*1.5
