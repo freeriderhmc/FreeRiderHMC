@@ -131,9 +131,9 @@ def line_equation(x,line_dy,line_c):
 
 def invadeROI(point, left_fit, right_fit):
     leftdy = left_fit[0]
-    leftc = left_fit[1]
+    leftc = left_fit[1]-0.5
     rightdy = right_fit[0]
-    rightc = right_fit[1]
+    rightc = right_fit[1]+0.5
     y_left = line_equation(point[0], leftdy, leftc)
     y_right = line_equation(point[0], rightdy, rightc)
 
